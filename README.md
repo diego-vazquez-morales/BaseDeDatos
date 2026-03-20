@@ -1,0 +1,2 @@
+# BaseDeDatos
+Miguel es gay
