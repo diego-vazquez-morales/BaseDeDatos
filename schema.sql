@@ -113,12 +113,13 @@ CREATE TABLE oferta_conductor (
     ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
+
 -- Company ↔ Vehiculo (N:N)
 CREATE TABLE empresa_vehiculo (
     id_company  BIGINT  NOT NULL,
     id_vehiculo     BIGINT  NOT NULL,
     fecha_asignacion    DATE    NOT NULL,
-    fecha_fin   DATE    NULL,
+    fecha_fin   DATE   DEFAULT NULL,
 
     PRIMARY KEY (id_company, id_vehiculo, fecha_asignacion),
     FOREIGN KEY (id_company) REFERENCES company(id_company) 
