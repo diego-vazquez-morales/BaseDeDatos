@@ -1,15 +1,15 @@
 services:
   mysql:
     image: mysql:8.0
-    container_name: mysql8
+    container_name: mysql
     restart: unless-stopped
     ports:
       - "3306:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: "rootpass"
-      MYSQL_DATABASE: "ride-hailing"
-      MYSQL_USER: "app"
-      MYSQL_PASSWORD: "apppass"
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: rideHailing
+      MYSQL_USER: app
+      MYSQL_PASSWORD: apppass
     command: ["--default-authentication-plugin=mysql_native_password"]
     volumes:
       - mysql_data:/var/lib/mysql
