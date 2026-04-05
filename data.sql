@@ -34,55 +34,121 @@ INSERT INTO conductor (nombre, email, id_company, activo) VALUES
   ('Carlos Rodríguez', 'carlosRodriguez@email.com', 5, TRUE);
 
 -- Vehiculos
-INSERT INTO vehiculo (matricula, marca, modelo, id_conductor) VALUES
-  ('ABC1234', 'Toyota', 'Prius', 1),
-  ('XYZ5678', 'Tesla', 'Model 3', 2),
-  ('DEF9012', 'Seat', 'Leon', 3),
-  ('GHI3456', 'Renault', 'Clio', 4),
-  ('JKL7890', 'Ford', 'Focus', 5);
+INSERT INTO vehiculo (matricula, marca, modelo, anio, id_conductor) VALUES
+  ('ABC1234', 'Toyota', 'Prius', 2020, 1),
+  ('XYZ5678', 'Tesla', 'Model 3', 2021, 2),
+  ('DEF9012', 'Seat', 'Leon', 2019, 3),
+  ('GHI3456', 'Renault', 'Clio', 2020, 4),
+  ('JKL7890', 'Ford', 'Focus', 2018, 5),
+  ('MNO1122', 'Volkswagen', 'Golf', 2022, 6),
+  ('PQR3344', 'BMW', 'Serie 3', 2023, 7),
+  ('STU5566', 'Honda', 'Civic', 2020, 8),
+  ('VWX7788', 'Hyundai', 'Ioniq', 2022, 9);
 
+-- Tarifas por company
+INSERT INTO tarifa (id_company, euro_por_km, euro_por_minuto, precio_base) VALUES
+  (1, 1.20, 0.20, 2.50), -- cabify
+  (2, 1.10, 0.25, 3.00), -- bolt
+  (3, 1.30, 0.15, 2.00), -- uber
+  (4, 1.25, 0.18, 2.80), -- free now
+  (5, 1.15, 0.22, 2.60); -- lyft
 
 -- Viajes
-INSERT INTO viaje (id_rider, origen_lat, origen_lon, destino_lat, destino_lon, distancia_km, precio) VALUES
-  (1, 40.416775, -3.703790, 40.417000, -3.704000, 2.5, 10.00),
-  (2, 40.416775, -3.703790, 40.418000, -3.705000, 3.0, 12.00),
-  (3, 40.416775, -3.703790, 40.419000, -3.706000, 4.0, 15.00),
-  (4, 40.416775, -3.703790, 40.420000, -3.707000, 5.0, 20.00),
-  (5, 40.416775, -3.703790, 40.421000, -3.708000, 6.0, 25.00),
-  (6, 40.416775, -3.703790, 40.422000, -3.709000, 7.0, 30.00),
-  (7, 40.416775, -3.703790, 40.423000, -3.710000, 8.0, 35.00),
-  (8, 40.416775, -3.703790, 40.424000, -3.711000, 9.0, 40.00);
+INSERT INTO viaje (id_rider, id_tarifa, origen_lat, origen_lon, destino_lat, destino_lon, distancia_km, duracion_minutos, estado, precio_total, id_conductor_aceptado) VALUES
+  (1, 1, 40.416775, -3.703790, 40.418056, -3.704444, 2.5, 15, 'finalizado', 5.00, 1),
+  (2, 2, 40.416775, -3.703790, 40.419000, -3.705000, 3.0, 20, 'finalizado', 6.50, 2),
+  (3, 3, 40.416775, -3.703790, 40.420000, -3.706000, 4.0, 25, 'finalizado', 8.00, 4),
+  (4, 4, 40.416775, -3.703790, 40.421000, -3.707000, 5.0, 30, 'finalizado', 10.00, 5),
+  (5, 5, 40.416775, -3.703790, 40.422000, -3.708000, 6.0, 35, 'cancelado', NULL, NULL),
+  (6, 1, 40.416775, -3.703790, 40.423000, -3.709000, NULL, NULL, 'solicitado', NULL, NULL),
+  (7, 2, 40.416775, -3.703790, 40.424000, -3.710000, NULL, NULL, 'solicitado', NULL, NULL),
+  (8, 3, 40.416775, -3.703790, 40.425000, -3.711000, NULL, NULL, 'solicitado', NULL, NULL),
+  (9, 4, 40.416775, -3.703790, 40.426000, -3.712000, NULL, NULL, 'solicitado', NULL, NULL),
+  (2, 2, 40.418000, -3.705000, 40.422000, -3.709000, NULL, NULL, 'aceptado',    NULL, 1),
+  (3, 3, 40.419000, -3.706000, 40.423000, -3.710000, NULL, NULL, 'en_curso',    NULL, 4);
+  
 
 -- Ofertas
-INSERT INTO oferta (id_viaje) VALUES
-  (1),
-  (2),
-  (3),
-  (4),
-  (5),
-  (6),
-  (7),
-  (8);
+INSERT INTO oferta (id_viaje, estado) VALUES
+  (1, 'aceptada'),
+  (2, 'aceptada'),
+  (3, 'aceptada'),
+  (4, 'aceptada'),
+  (5, 'expirada'),
+  (6, 'aceptada'),
+  (7, 'aceptada'),
+  (8, 'aceptada'),
+  (9, 'aceptada'),
+  (10, 'pendiente'),
+  (11, 'pendiente');
 
 -- Oferta-Conductor
-INSERT INTO oferta_conductor (id_oferta, id_conductor) VALUES
-  (1, 1),
-  (2, 2),
-  (3, 3),
-  (4, 4),
-  (5, 5),
-  (6, 6),
-  (7, 7),
-  (8, 8);
+INSERT INTO oferta_conductor (id_oferta, id_conductor, decision, respondida_en) VALUES
+-- oferta 1
+  (1, 1, 'aceptada', NOW()),
+  (1, 2, 'rechazada', NOW()),
+  (1, 4, 'rechazada', NOW()),
+-- oferta 2
+  (2, 2, 'rechazada', NOW()),
+  (2, 4, 'aceptada', NOW()),
+  (2, 5, 'rechazada', NOW()),
+-- oferta 3
+  (3, 4, 'aceptada', NOW()),
+  (3, 5, 'rechazada', NOW()),
+  (3, 6, 'rechazada', NOW()),
+-- oferta 4
+  (4, 1, 'aceptada', NOW()),
+  (4, 2, 'rechazada', NOW()),
+  (4, 5, 'rechazada', NOW()),
+-- oferta 5
+  (5, 2, 'expirada', NOW()),
+  (5, 1, 'expirada', NOW()),
+  (5, 4, 'expirada', NOW());
+
+-- valoraciones de viajes
+INSERT INTO valoracion (id_viaje, id_rider, id_conductor, puntuacion, comentario) VALUES
+  (1, 1, 1, 5, 'Excelente servicio, muy puntual y amable.'),
+  (2, 2, 2, 4, 'Buen viaje, aunque el conductor podría ser más amigable.'),
+  (3, 3, 4, 5, 'Viaje perfecto, el conductor fue muy profesional.');
+
+UPDATE conductor SET valoracion_media = (SELECT AVG(puntuacion) FROM valoracion WHERE id_conductor = 1) WHERE id_conductor = 1;
+UPDATE conductor SET valoracion_media = (SELECT AVG(puntuacion) FROM valoracion WHERE id_conductor = 2) WHERE id_conductor = 2;
+UPDATE conductor SET valoracion_media = (SELECT AVG(puntuacion) FROM valoracion WHERE id_conductor = 3) WHERE id_conductor = 3;
+UPDATE conductor SET valoracion_media = (SELECT AVG(puntuacion) FROM valoracion WHERE id_conductor = 4) WHERE id_conductor = 4;
+UPDATE conductor SET valoracion_media = (SELECT AVG(puntuacion) FROM valoracion WHERE id_conductor = 5) WHERE id_conductor = 5;
+UPDATE conductor SET valoracion_media = (SELECT AVG(puntuacion) FROM valoracion WHERE id_conductor = 6) WHERE id_conductor = 6;
+UPDATE conductor SET valoracion_media = (SELECT AVG(puntuacion) FROM valoracion WHERE id_conductor = 7) WHERE id_conductor = 7;
+UPDATE conductor SET valoracion_media = (SELECT AVG(puntuacion) FROM valoracion WHERE id_conductor = 8) WHERE id_conductor = 8;
 
 -- Viaje-Conductor
 INSERT INTO empresa_vehiculo (id_company, id_vehiculo, fecha_asignacion, fecha_fin) VALUES
-  (1, 1, '2024-01-01', '2024-06-30'),
+  (1, 1, '2024-01-01', NULL),
   (1, 2, '2024-01-01', NULL),
-  (2, 3, '2024-01-01', '2024-12-31'),
+  (2, 3, '2024-01-01', NULL),
   (3, 4, '2024-01-01', NULL),
-  (3, 5, '2024-01-01', '2024-12-31'),
-  (2, 2, '2024-01-01', NULL),
-  (3, 3, '2024-01-01', '2024-12-31'),
-  (4, 4, '2024-01-01', NULL),
-  (5, 5, '2024-01-01', '2024-12-31');
+  (3, 5, '2024-01-01', NULL),
+  (4, 6, '2024-01-01', NULL),
+  (4, 7, '2024-01-01', NULL),
+  (5, 8, '2024-01-01', NULL),
+  (5, 9, '2024-01-01', NULL);
+
+-- EVENTO viaje
+INSERT INTO evento_viaje(id_viaje, id_conductor, tipo_evento, estado_anterior, estado_nuevo) VALUES
+  (1, 1, 'aceptacion', 'solicitado', 'aceptado'),
+  (1, 1, 'inicio', 'aceptado', 'en_curso'),
+  (1, 1, 'finalizacion', 'en_curso', 'finalizado'),
+
+  (2, 2, 'aceptacion', 'solicitado', 'aceptado'),
+  (2, 2, 'inicio', 'aceptado', 'en_curso'),
+  (2, 2, 'finalizacion', 'en_curso', 'finalizado'),
+
+  (3, 4, 'aceptacion', 'solicitado', 'aceptado'),
+  (3, 4, 'inicio', 'aceptado', 'en_curso'),
+  (3, 4, 'finalizacion', 'en_curso', 'finalizado'),
+
+  (4, 5, 'aceptacion', 'solicitado', 'aceptado'),
+  (4, 5, 'inicio', 'aceptado', 'en_curso'),
+  (4, 5, 'finalizacion', 'en_curso', 'finalizado'),
+
+  (5, NULL, 'cancelacion', 'solicitado', 'cancelado');
+
