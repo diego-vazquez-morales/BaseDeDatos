@@ -156,14 +156,15 @@ ORDER BY total DESC;
 -- demasiados viajes.
 SELECT
     c.id_conductor,
-    c.nombre                                                              AS conductor,
+    u.nombre                                                              AS conductor,
     COUNT(oc.id_oferta)                                                   AS total_ofertas_recibidas,
     SUM(oc.decision = 'aceptada')                                         AS aceptadas,
     SUM(oc.decision = 'rechazada')                                        AS rechazadas,
     ROUND(SUM(oc.decision = 'aceptada') / COUNT(oc.id_oferta) * 100, 2)  AS tasa_aceptacion_pct
 FROM conductor c
+JOIN usuario u ON c.id_usuario = u.id_usuario
 JOIN oferta_conductor oc ON c.id_conductor = oc.id_conductor
-GROUP BY c.id_conductor, c.nombre
+GROUP BY c.id_conductor, u.nombre
 ORDER BY tasa_aceptacion_pct DESC;
 
 
@@ -196,16 +197,17 @@ ORDER BY tasa_aceptacion_pct DESC;
 
 SELECT
     c.id_conductor,
-    c.nombre                                         AS conductor,
-    COUNT(v.id_viaje)                                AS viajes_finalizados,
-    ROUND(SUM(v.precio), 2)                          AS ingresos_totales_eur,
-    ROUND(SUM(v.distancia_km), 2)                    AS km_totales,
-    ROUND(AVG(v.distancia_km), 2)                    AS km_medios_por_viaje,
-    ROUND(SUM(v.precio) / NULLIF(SUM(v.distancia_km), 0), 2) AS euros_por_km
+    u.nombre                                                              AS conductor,
+    COUNT(v.id_viaje)                                                     AS viajes_finalizados,
+    ROUND(SUM(v.precio_total), 2)                                         AS ingresos_totales_eur,
+    ROUND(SUM(v.distancia_km), 2)                                         AS km_totales,
+    ROUND(AVG(v.distancia_km), 2)                                         AS km_medios_por_viaje,
+    ROUND(SUM(v.precio_total) / NULLIF(SUM(v.distancia_km), 0), 2)       AS euros_por_km
 FROM conductor c
+JOIN usuario u ON c.id_usuario = u.id_usuario
 JOIN viaje v ON c.id_conductor = v.id_conductor_aceptado
 WHERE v.estado = 'finalizado'
-GROUP BY c.id_conductor, c.nombre
+GROUP BY c.id_conductor, u.nombre
 ORDER BY ingresos_totales_eur DESC;
 
 
@@ -215,14 +217,14 @@ ORDER BY ingresos_totales_eur DESC;
 
 SELECT
     co.id_company,
-    co.nombre                                                            AS company,
-    COUNT(v.id_viaje)                                                    AS viajes_finalizados,
-    ROUND(SUM(v.precio), 2)                                              AS ingresos_totales_eur,
-    ROUND(SUM(v.distancia_km), 2)                                        AS km_totales,
-    ROUND(SUM(v.precio) / NULLIF(SUM(v.distancia_km), 0), 2)            AS euros_por_km
+    co.nombre                                                              AS company,
+    COUNT(v.id_viaje)                                                      AS viajes_finalizados,
+    ROUND(SUM(v.precio_total), 2)                                          AS ingresos_totales_eur,
+    ROUND(SUM(v.distancia_km), 2)                                          AS km_totales,
+    ROUND(SUM(v.precio_total) / NULLIF(SUM(v.distancia_km), 0), 2)        AS euros_por_km
 FROM company co
 JOIN conductor c ON co.id_company = c.id_company
-JOIN viaje v     ON c.id_conductor = v.id_conductor_aceptado
+JOIN viaje v ON c.id_conductor = v.id_conductor_aceptado
 WHERE v.estado = 'finalizado'
 GROUP BY co.id_company, co.nombre
 ORDER BY ingresos_totales_eur DESC;
@@ -235,26 +237,26 @@ ORDER BY ingresos_totales_eur DESC;
 -- El tiempo medio no se puede calcular sin campos inicio_en/fin_en.
 
 SELECT
-    ROUND(AVG(distancia_km), 2) AS km_medios,
-    ROUND(AVG(precio), 2)       AS precio_medio,
-    ROUND(MIN(precio), 2)       AS precio_minimo,
-    ROUND(MAX(precio), 2)       AS precio_maximo,
-    COUNT(*)                    AS total_viajes_finalizados
+    ROUND(AVG(distancia_km), 2)   AS km_medios,
+    ROUND(AVG(precio_total), 2)   AS precio_medio,
+    ROUND(MIN(precio_total), 2)   AS precio_minimo,
+    ROUND(MAX(precio_total), 2)   AS precio_maximo,
+    COUNT(*)                      AS total_viajes_finalizados
 FROM viaje
 WHERE estado = 'finalizado';
 
 
 -- TOP CONDUCTORES CON MÁS VIAJES FINALIZADOS
 -- Ranking de los conductores más productivos.
-
 SELECT
-    c.nombre             AS conductor,
-    co.nombre            AS company,
-    COUNT(v.id_viaje)    AS viajes_finalizados
+    u.nombre                AS conductor,
+    co.nombre               AS company,
+    COUNT(v.id_viaje)       AS viajes_finalizados
 FROM viaje v
 JOIN conductor c  ON v.id_conductor_aceptado = c.id_conductor
-JOIN company   co ON c.id_company = co.id_company
+JOIN usuario u    ON c.id_usuario = u.id_usuario
+JOIN company co   ON c.id_company = co.id_company
 WHERE v.estado = 'finalizado'
-GROUP BY c.id_conductor, c.nombre, co.nombre
+GROUP BY c.id_conductor, u.nombre, co.nombre
 ORDER BY viajes_finalizados DESC
 LIMIT 10;
