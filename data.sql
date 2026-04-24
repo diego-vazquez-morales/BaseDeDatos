@@ -82,6 +82,7 @@ INSERT INTO oferta (id_viaje, estado) VALUES
   (10, 'pendiente'),
   (11, 'pendiente');
 
+
 -- Oferta-Conductor
 INSERT INTO oferta_conductor (id_oferta, id_conductor, decision, respondida_en) VALUES
 -- oferta 1

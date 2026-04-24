@@ -17,6 +17,7 @@ SHOW VARIABLES LIKE 'binlog_expire_logs_seconds';    -- Retención en segundos
 -- Ver los archivos de binlog disponibles actualmente
 SHOW BINARY LOGS;
 
+
 --Con la poca cantidad de datos que manejamos vamos a optar por un backup logico 
 --antes que por uno fisico ya que asi es mas tiene una mayor portabiliad y es mas senciullo
 -- ─────────────────────────────────────────────────────────────────
