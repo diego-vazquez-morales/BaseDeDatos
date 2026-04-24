@@ -1,4 +1,4 @@
--- Active: 1775250534603@@127.0.0.1@3306@rideHailing
+-- Active: 1770889732320@@127.0.0.1@3306@rideHailing
 CREATE DATABASE IF NOT EXISTS rideHailing
 CHARACTER SET utf8mb4
 COLLATE utf8mb4_0900_ai_ci;
