@@ -1,183 +1,260 @@
 
-
--- Plan de backup.sql
-
---Si analizamos el contexto estamos base de datos para una plataforma de ride-hailing que es un negocio que opera en tiempo real
--- y en caso de que fallara el sistema perder datos como los pagos, si un conductor acepto una oferta, o el cambio de un estado de un viaje
---de en curso a finalizado puede ser critico tanto para la empresa como para los usuarios.
---Entonces teniendo todo eso encuenta podemos defineir el RPO y el RTO
---Definimos el RPO =  hora --> que es la maxima 1 hora de perdida de datos  y un RTO de = 4 horas donde el sistema pueda restaurarse.
---Pero apuntamos a crear un sistema hibrido con backup completo + binlog + replicas para hacerlo de la forma mas segura.
-
---Verificar que el Binlog esta activo  para PITR (recuperar en el momento exacto)
-SHOW VARIABLES LIKE 'log_bin';                       -- Debe ser ON
-SHOW VARIABLES LIKE 'binlog_format';                 -- Recomendado: ROW
-SHOW VARIABLES LIKE 'binlog_expire_logs_seconds';    -- Retención en segundos
-
--- Ver los archivos de binlog disponibles actualmente
-SHOW BINARY LOGS;
-
-
---Con la poca cantidad de datos que manejamos vamos a optar por un backup logico 
---antes que por uno fisico ya que asi es mas tiene una mayor portabiliad y es mas senciullo
--- ─────────────────────────────────────────────────────────────────
-
---Preguntar equipo cual prefiere
-
-
--- COMANDO ((ejecutar en la terminal)
---
---   docker exec mysql mysqldump \
---     -uroot -prootpass \
---     --databases rideHailing \
---     --single-transaction \
---     --routines --triggers --events \
---     --set-gtid-purged=OFF \
---     > backup_rideHailing_$(date +%Y%m%d).sql
---
--- Para incluir también usuarios y privilegios (base de datos mysql):
---
---   docker exec mysql mysqldump \
---     -uroot -prootpass \
---     --all-databases \
---     --single-transaction \
---     --routines --triggers --events \
---     --set-gtid-purged=OFF \
---     > backup_completo.sql
---
+--aqui van las consultas para los 2 dashboards de la plataforma:
+--Dashboard de métricas de base de datos para monitorización.
+--Dashboard de métricas de negocio (viajes por hora, ofertas aceptadas, etc.).
 
 
 
--- la restauracion (ejecutar desde terminal/bash)
---
--- Una vez tenemos el archivo .sql, lo restauramos así:
---
---   cat backup_rideHailing_FECHA.sql \
---     | docker exec -i mysql mysql -uroot -prootpass
---
-────────────────────────────────────────────
--- Verificacion tras restauracion
---
---Tras la restauracion hacemos comandos basicos para saber si todo esta bien
 
-USE rideHailing;
 
--- Verificar que todas las tablas existen
-SHOW TABLES;
+-- 1.--Dashboard de métricas de base de datos para monitorización.
 
--- Conteo de filas por tabla para comparar con el backup original
-SELECT 'company'         AS tabla, COUNT(*) AS filas FROM company
-UNION ALL
-SELECT 'rider',                    COUNT(*)          FROM rider
-UNION ALL
-SELECT 'conductor',                COUNT(*)          FROM conductor
-UNION ALL
-SELECT 'vehiculo',                 COUNT(*)          FROM vehiculo
-UNION ALL
-SELECT 'viaje',                    COUNT(*)          FROM viaje
-UNION ALL
-SELECT 'oferta',                   COUNT(*)          FROM oferta
-UNION ALL
-SELECT 'oferta_conductor',         COUNT(*)          FROM oferta_conductor
-UNION ALL
-SELECT 'empresa_vehiculo',         COUNT(*)          FROM empresa_vehiculo;
+--Metricas de conexiones en la base de dato----
 
--- Verificar integridad de las claves foráneas (no deben aparecer huérfanos)
-SELECT TABLE_NAME, CONSTRAINT_NAME, REFERENCED_TABLE_NAME
-FROM information_schema.KEY_COLUMN_USAGE
-WHERE TABLE_SCHEMA = 'rideHailing'
-  AND REFERENCED_TABLE_NAME IS NOT NULL;
+-- Conexiones actuales
+SHOW STATUS LIKE 'Threads_connected';
 
--- Consulta crítica de negocio: viajes en los últimos 7 días
--- Si devuelve resultados coherentes, el restore fue correcto
-SELECT estado, COUNT(*) AS total
+-- Máximo de conexiones alcanzado
+SHOW STATUS LIKE 'Max_used_connections';
+
+-- Límite configurado si se acerca  a este limite hay riego de rechazo 
+SHOW VARIABLES LIKE 'max_connections';
+
+-- Conexiones rechazadas porque supera el maximo
+SHOW STATUS LIKE 'Connection_errors_max_connections';
+
+
+
+--METRICAS DE QUERIES--
+
+--total de queries ejecutadas desde q arranca el servidor
+SHOW STATUS LIKE 'Queries';
+
+-- total de select realizados
+SHOW STATUS LIKE 'Com_select';
+-- total de insert realizados
+SHOW STATUS LIKE 'Com_insert';
+-- total de update realizados
+SHOW STATUS LIKE 'Com_update';
+-- total de delete realizados
+SHOW STATUS LIKE 'Com_delete';
+
+--total de queries lentas son las que tardan mas del tiempo configurado (long_query_time)
+SHOW STATUS LIKE 'Slow_queries';
+
+
+--METRICAS DE INNOBD (BUFFER POOL)--
+
+-- Tamaño del buffer pool en bytes
+SHOW VARIABLES LIKE 'innodb_buffer_pool_size';
+
+--total de paginas usadas en el boofer pool
+SHOW STATUS LIKE 'Innodb_buffer_pool_pages_total';
+--total de paginas libres en el buufer pool
+SHOW STATUS LIKE 'Innodb_buffer_pool_pages_free';
+--total de paginas usadas en memoria pero no escritas en el disco
+SHOW STATUS LIKE 'Innodb_buffer_pool_pages_dirty';
+
+-- Hit ratio es el porecntaje de datos q se leen desde memoria y no en el disco en caso de q sea menos a 95 significa que lee mucho de disco y no de memoria
+-- Hit ratio = (read_requests - reads) / read_requests * 100
+SELECT
+  (1 - (
+    (SELECT VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Innodb_buffer_pool_reads') /
+    (SELECT VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Innodb_buffer_pool_read_requests')
+  )) * 100 AS buffer_pool_hit_ratio;
+
+--METRICAS DE BLOQUEO--
+
+-- cuantas veces tuvo q esperar una transaccion por un bloqueo de una fila
+SHOW STATUS LIKE 'Innodb_row_lock_waits';
+--tiempo medio q se espero en milisegundos 
+SHOW STATUS LIKE 'Innodb_row_lock_time_avg';
+
+-- total de deadlocks ocurridos debe ser 0
+SHOW STATUS LIKE 'Innodb_deadlocks';
+
+-- trasnsacciones abiertas en este instante
+SELECT * FROM information_schema.INNODB_TRX;
+
+
+
+--QUERIES LENTAS--
+
+--muestra las 10 queries q fueron mas lentas ordenadas
+SELECT * FROM sys.statement_analysis ORDER BY total_latency DESC LIMIT 10;
+--que locks estan esperando y que es lo q los bloquea
+SELECT * FROM performance_schema.data_lock_waits LIMIT 50;
+
+--PREGUNTAR EQUPO SI PREGIEREN ESTA EN VEZ DE LA DE ARRIBA ESTA ES MAS ESPECIFICA Y NO SE APOYA EN UN * SINO COGE LO UNICO ESENCIA EN EL SELECT
+SELECT
+    query,
+    exec_count        AS ejecuciones,
+    avg_latency       AS media,
+    max_latency       AS maximo,
+    total_latency     AS total
+FROM sys.statement_analysis
+ORDER BY total_latency DESC
+LIMIT 10;
+
+--MANTENIMIENTO DE INDICES--
+--indices declarados en la bbdd pero no usados nunca
+SELECT * FROM sys.schema_unused_indexes;
+--indices que estan duplicados y no apartan nada nuevo
+SELECT * FROM sys.schema_redundant_indexes;
+
+
+--2.Dashboard de métricas de negocio (viajes por hora, ofertas aceptadas, etc.).
+
+
+-- VIAJES POR HORA
+-- Agrupa los viajes por hora del día para ver en qué tramos
+-- hay más demanda. Útil para ajustar flotas y turnos de conductores.
+
+SELECT
+    HOUR(creado_en)       AS hora_del_dia,
+    COUNT(*)              AS total_viajes,
+    SUM(precio_total)           AS ingresos_totales,
+    ROUND(AVG(precio_total), 2) AS precio_medio
 FROM viaje
-WHERE creado_en >= NOW() - INTERVAL 7 DAY
-GROUP BY estado;
+WHERE creado_en >= NOW() - INTERVAL 7 DAY  -- última semana
+GROUP BY HOUR(creado_en)
+ORDER BY hora_del_dia;
 
 
 
---  Uso de PITR 
---
---Pitr nos permite recuperar la bd haste el momento exacto graciasn a binlog
+-- ESTADO ACTUAL DE LOS VIAJES (distribución por estado)
+-- Muestra cuántos viajes hay en cada estado en este momento.
+-- Permite detectar si hay muchos viajes "solicitados" sin aceptar
+-- (puede indicar falta de conductores disponibles).
 
--- PASOS (ejecutar en terminal):
---
---   1. Restaurar el ultimo backup
---      cat backup_rideHailing_20250101.sql \
---        | docker exec -i mysql mysql -uroot -prootpass
---
---   2. Extraer del binlog solo los cambios hasta a hora necesaria
---      docker exec mysql mysqlbinlog \
---        --start-datetime="2025-01-01 10:00:00" \
---        --stop-datetime="2025-01-01 10:44:59" \
---        /var/lib/mysql/binlog.000001 > cambios.sql
---
---   3. Aplicar esos cambios sobre la BD restaurada
---      cat cambios.sql | docker exec -i mysql mysql -uroot -prootpass
---
--- Para identificar el momento exacto del DELETE en el binlog:
---      docker exec mysql mysqlbinlog \
---        --start-datetime="2025-01-01 10:40:00" \
---        --stop-datetime="2025-01-01 10:50:00" \
---        /var/lib/mysql/binlog.000001 | grep -A5 -B5 "DELETE"
---
+SELECT
+    estado,
+    COUNT(*) AS total
+FROM viaje
+GROUP BY estado
+ORDER BY total DESC;
 
 
--- ─────────────────────────────────────────────────────────────────
--- 7. AUTOMATIZACIÓN CON SCRIPT DE ROTACIÓN
---
--- El siguiente script de bash hace backup diario y borra backups
--- con más de 7 días para no llenar el disco.
--- Basado en: 06_backup.md §7.1 "Script de backup con rotación"
---
--- #!/bin/bash
--- # backup_ridehailing.sh
---
--- FECHA=$(date +%Y%m%d_%H%M%S)
--- BACKUP_DIR="/backups/mysql"
--- RETENTION_DAYS=5
---
--- # Crear backup comprimido
--- docker exec mysql mysqldump \
---   -uroot -prootpass \
---   --databases rideHailing \
---   --single-transaction \
---   --routines --triggers --events \
---   --set-gtid-purged=OFF \
---   | gzip > "${BACKUP_DIR}/backup_${FECHA}.sql.gz"
---
--- # Verificar que se creó correctamente
--- if [ $? -eq 0 ]; then
---   echo "Backup creado: backup_${FECHA}.sql.gz"
--- else
---   echo "ERROR: Backup falló" >&2
---   exit 1
--- fi
---
--- # Eliminar backups con más de 5días
--- find ${BACKUP_DIR} -name "backup_*.sql.gz" -mtime +${RETENTION_DAYS} -delete
--- echo "Backups con más de ${RETENTION_DAYS} días eliminados"
---
--- Programar con cron para que se ejecute cada día a las 3:00 AM:
---   0 3 * * * /scripts/backup_ridehailing.sh >> /var/log/mysql_backup.log 2>&1
 
--- ─────────────────────────────────────────────────────────────────
--- 8. USUARIO DE BACKUP
---
--- El usuario 'backup'@'localhost' ya está creado en permissions.sql
--- con los permisos mínimos necesarios: SELECT, LOCK TABLES, SHOW VIEW.
--- Esto sigue el principio de mínimo privilegio: el proceso de backup
--- solo puede leer datos, no modificarlos.
--- Basado en: 06_backup.md §2.2 opción --single-transaction
--- ─────────────────────────────────────────────────────────────────
+-- OFERTAS ACEPTADAS VS RECHAZADAS VS PENDIENTES
+-- Muestra el volumen de decisiones por tipo para detectar
+-- si muchas ofertas quedan sin responder o son rechazadas.
+-- Basado en: 07_monitorizacion.md - QPS y métricas de negocio
 
--- Verificar que el usuario de backup existe y tiene los permisos correctos
-USE mysql;
-SELECT user, host, plugin, account_locked
-FROM mysql.user
-WHERE user = 'backup';
-
-SHOW GRANTS FOR 'backup'@'localhost';
+SELECT
+    decision,
+    COUNT(*) AS total
+FROM oferta_conductor
+GROUP BY decision
+ORDER BY total DESC;
 
 
+
+-- TASA DE ACEPTACIÓN POR CONDUCTOR
+-- Calcula el porcentaje de ofertas que cada conductor acepta.
+-- Un conductor con tasa muy baja puede estar inactivo o rechazando
+-- demasiados viajes.
+SELECT
+    c.id_conductor,
+    c.nombre                                                              AS conductor,
+    COUNT(oc.id_oferta)                                                   AS total_ofertas_recibidas,
+    SUM(oc.decision = 'aceptada')                                         AS aceptadas,
+    SUM(oc.decision = 'rechazada')                                        AS rechazadas,
+    ROUND(SUM(oc.decision = 'aceptada') / COUNT(oc.id_oferta) * 100, 2)  AS tasa_aceptacion_pct
+FROM conductor c
+JOIN oferta_conductor oc ON c.id_conductor = oc.id_conductor
+GROUP BY c.id_conductor, c.nombre
+ORDER BY tasa_aceptacion_pct DESC;
+
+
+
+-- TASA DE ACEPTACIÓN POR COMPANY
+-- Igual que la anterior pero agrupado a nivel de empresa.
+-- Permite comparar qué compañías tienen conductores más activos.
+
+SELECT
+    co.id_company,
+    co.nombre                                                             AS company,
+    COUNT(oc.id_oferta)                                                   AS total_ofertas,
+    SUM(oc.decision = 'aceptada')                                         AS aceptadas,
+    SUM(oc.decision = 'rechazada')                                        AS rechazadas,
+    ROUND(SUM(oc.decision = 'aceptada') / COUNT(oc.id_oferta) * 100, 2)  AS tasa_aceptacion_pct
+FROM company co
+JOIN conductor c  ON co.id_company  = c.id_company
+JOIN oferta_conductor oc ON c.id_conductor = oc.id_conductor
+GROUP BY co.id_company, co.nombre
+ORDER BY tasa_aceptacion_pct DESC;
+
+
+--MIRAR DAVID
+-- INGRESOS POR CONDUCTOR
+-- Suma los precios de todos los viajes finalizados de cada conductor.
+-- También calcula euros/km como métrica de eficiencia.
+-- Nota: euros/minuto no es calculable porque la tabla viaje no tiene
+-- campos de inicio/fin de viaje — se necesitaría añadir inicio_en y
+-- fin_en a la tabla viaje para implementarlo.
+
+SELECT
+    c.id_conductor,
+    c.nombre                                         AS conductor,
+    COUNT(v.id_viaje)                                AS viajes_finalizados,
+    ROUND(SUM(v.precio), 2)                          AS ingresos_totales_eur,
+    ROUND(SUM(v.distancia_km), 2)                    AS km_totales,
+    ROUND(AVG(v.distancia_km), 2)                    AS km_medios_por_viaje,
+    ROUND(SUM(v.precio) / NULLIF(SUM(v.distancia_km), 0), 2) AS euros_por_km
+FROM conductor c
+JOIN viaje v ON c.id_conductor = v.id_conductor_aceptado
+WHERE v.estado = 'finalizado'
+GROUP BY c.id_conductor, c.nombre
+ORDER BY ingresos_totales_eur DESC;
+
+
+
+-- INGRESOS POR COMPANY
+-- Misma lógica que la anterior pero agrupada por empresa.
+
+SELECT
+    co.id_company,
+    co.nombre                                                            AS company,
+    COUNT(v.id_viaje)                                                    AS viajes_finalizados,
+    ROUND(SUM(v.precio), 2)                                              AS ingresos_totales_eur,
+    ROUND(SUM(v.distancia_km), 2)                                        AS km_totales,
+    ROUND(SUM(v.precio) / NULLIF(SUM(v.distancia_km), 0), 2)            AS euros_por_km
+FROM company co
+JOIN conductor c ON co.id_company = c.id_company
+JOIN viaje v     ON c.id_conductor = v.id_conductor_aceptado
+WHERE v.estado = 'finalizado'
+GROUP BY co.id_company, co.nombre
+ORDER BY ingresos_totales_eur DESC;
+
+
+
+-- KILOMETRAJE MEDIO Y PRECIO MEDIO DE LOS VIAJES
+-- Métricas globales de los viajes finalizados.
+-- Basado en: enunciado - "tiempo medio y kilometraje medio".
+-- El tiempo medio no se puede calcular sin campos inicio_en/fin_en.
+
+SELECT
+    ROUND(AVG(distancia_km), 2) AS km_medios,
+    ROUND(AVG(precio), 2)       AS precio_medio,
+    ROUND(MIN(precio), 2)       AS precio_minimo,
+    ROUND(MAX(precio), 2)       AS precio_maximo,
+    COUNT(*)                    AS total_viajes_finalizados
+FROM viaje
+WHERE estado = 'finalizado';
+
+
+-- TOP CONDUCTORES CON MÁS VIAJES FINALIZADOS
+-- Ranking de los conductores más productivos.
+
+SELECT
+    c.nombre             AS conductor,
+    co.nombre            AS company,
+    COUNT(v.id_viaje)    AS viajes_finalizados
+FROM viaje v
+JOIN conductor c  ON v.id_conductor_aceptado = c.id_conductor
+JOIN company   co ON c.id_company = co.id_company
+WHERE v.estado = 'finalizado'
+GROUP BY c.id_conductor, c.nombre, co.nombre
+ORDER BY viajes_finalizados DESC
+LIMIT 10;
