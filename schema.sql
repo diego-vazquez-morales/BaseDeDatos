@@ -17,34 +17,56 @@ CREATE TABLE company (
     UNIQUE KEY uk_cif (cif)
 ) ENGINE=InnoDB;
 
+-- Usuario
+CREATE TABLE usuario (
+    id_usuario BIGINT NOT NULL AUTO_INCREMENT,
+    nombre VARCHAR(80) NOT NULL,
+    email VARCHAR(120) NOT NULL,
+    telefono VARCHAR(20) NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    rating DECIMAL(3, 2) DEFAULT NULL,
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id_usuario),
+    UNIQUE KEY uk_email (email),
+    UNIQUE KEY uk_email (email),
+    UNIQUE KEY uk_telefono (telefono)
+
+)ENGINE=InnoDB;
+
 -- Rider
 CREATE TABLE rider (
-    id_rider  BIGINT      NOT NULL    AUTO_INCREMENT,
-    nombre    VARCHAR(80)     NOT NULL,
-    email     VARCHAR(120)    NOT NULL,
-    valoracion_media DECIMAL(3,2) DEFAULT NULL, -- CAMPO AÑADIDO
-    creado_en    TIMESTAMP   NOT NULL DEFAULT     CURRENT_TIMESTAMP,
+    id_rider BIGINT NOT NULL AUTO_INCREMENT,
+    id_usuario BIGINT NOT NULL,
+    metodo_pago ENUM('tarjeta','efectivo') NOT NULL DEFAULT 'tarjeta',
+    ultimo_viaje BIGINT NULL,
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     PRIMARY KEY (id_rider),
-    UNIQUE KEY uk_email (email)
-) ENGINE=InnoDB;
+    FOREIGN KEY (id_usuario) REFERENCES usuari(id_usuario) ON UPDATE CASCADE ON DELETE RESTRICT
+)ENGINE=InnoDB;
 
 -- Conductor
 CREATE TABLE conductor (
-    id_conductor    BIGINT  NOT NULL    AUTO_INCREMENT,
-    nombre  VARCHAR(80)     NOT NULL,
-    email   VARCHAR(120)    NOT NULL,
-    id_company  BIGINT  NOT NULL,
-    activo  BOOLEAN     NOT NULL    DEFAULT TRUE,
-    valoracion_media DECIMAL(3,2) DEFAULT NULL, -- CAMPO AÑADIDO
-    creado_en  TIMESTAMP   NOT NULL DEFAULT     CURRENT_TIMESTAMP,
+    id_conductor BIGINT NOT NULL AUTO_INCREMENT,
+    id_usuario BIGINT NOT NULL,
+    id_company BIGINT NOT NULL,
+    licencia VARCHAR(20) NOT NULL,
+    estado_servicio ENUM('disponible','ocupado','inactivo') NOT NULL DEFAULT 'disponible',
+    ultimo_viaje BIGINT NULL,
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    valoracion_media DECIMAL(3, 2) DEFAULT NULL,
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     PRIMARY KEY (id_conductor),
-    UNIQUE KEY uk_email (email),
-    FOREIGN KEY (id_company) REFERENCES company(id_company) 
-    ON UPDATE CASCADE
-    ON DELETE RESTRICT
-) ENGINE=InnoDB;
+    UNIQUE KEY uk_licencia (licencia),
+    FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    FOREIGN KEY (id_company) REFERENCES company(id_company)
+        ON UPDATE CASCADE ON DELETE RESTRICT
+
+
+)ENGINE=InnoDB;
+
 
 -- Vehiculo
 CREATE TABLE vehiculo (
