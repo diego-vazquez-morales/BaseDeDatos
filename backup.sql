@@ -139,21 +139,21 @@ SHOW GRANTS FOR 'backup'@'localhost';
 --3. ejecutar: La automatizacion del backup
 #!/bin/bash
  # backup_ridehailing.sh
- FECHA=$(date +%Y%m%d_%H%M%S)
+FECHA=$(date +%Y%m%d_%H%M%S)
 BACKUP_DIR="/backups/mysql"
 RETENTION_DAYS=5
 
 mkdir -p "${BACKUP_DIR}"
- # creamos backup comprimido para que no ocupe tanto
+# creamos backup comprimido para que no ocupe tanto
 docker exec mysql mysqldump \
   -uroot -prootpass \
-  -databases rideHailing \
-  -single-transaction \
-  -routines --triggers --events \
+  --databases rideHailing \
+  --single-transaction \
+  --routines --triggers --events \
   -set-gtid-purged=OFF \
   | gzip > "${BACKUP_DIR}/backup_${FECHA}.sql.gz"
   # comprobar si se creo correctamente
- if [ $? -eq 0 ]; then
+if [ $? -eq 0 ]; then
   echo "Backup creado: backup_${FECHA}.sql.gz"
 else
   echo "ERROR: Backup falló" >&2
@@ -181,4 +181,3 @@ echo "Backups con más de ${RETENTION_DAYS} días eliminados"
 --5. hacer pruebas tras restore
 
 
-docker exec -it mysql mysql -uroot -prootpass

@@ -12,66 +12,66 @@
 -- Metricas de conexiones en la base de dato-- --
 
 -- Conexiones actuales
-SHOW STATUS LIKE 'Threads_connected';
+SELECT VARIABLE_VALUE AS valor FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Threads_connected';
 
 -- Máximo de conexiones alcanzado
-SHOW STATUS LIKE 'Max_used_connections';
+SELECT VARIABLE_VALUE AS valor FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Max_used_connections';
 
--- Límite configurado si se acerca  a este limite hay riego de rechazo 
-SHOW VARIABLES LIKE 'max_connections';
+-- Límite configurado si se acerca  a este limite hay riego de rechazo
+SELECT VARIABLE_VALUE AS valor FROM performance_schema.global_variables WHERE VARIABLE_NAME = 'max_connections';
 
 -- Conexiones rechazadas porque supera el maximo
-SHOW STATUS LIKE 'Connection_errors_max_connections';
+SELECT VARIABLE_VALUE AS valor FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Connection_errors_max_connections';
 
 
 
 -- METRICAS DE QUERIES--
 
 -- total de queries ejecutadas desde q arranca el servidor
-SHOW STATUS LIKE 'Queries';
+SELECT VARIABLE_VALUE AS valor FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Queries';
 
 -- total de select realizados
-SHOW STATUS LIKE 'Com_select';
+SELECT VARIABLE_VALUE AS valor FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Com_select';
 -- total de insert realizados
-SHOW STATUS LIKE 'Com_insert';
+SELECT VARIABLE_VALUE AS valor FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Com_insert';
 -- total de update realizados
-SHOW STATUS LIKE 'Com_update';
+SELECT VARIABLE_VALUE AS valor FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Com_update';
 -- total de delete realizados
-SHOW STATUS LIKE 'Com_delete';
+SELECT VARIABLE_VALUE AS valor FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Com_delete';
 
 -- total de queries lentas son las que tardan mas del tiempo configurado (long_query_time)
-SHOW STATUS LIKE 'Slow_queries';
+SELECT VARIABLE_VALUE AS valor FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Slow_queries';
 
 
 -- METRICAS DE INNOBD (BUFFER POOL)--
 
 -- Tamaño del buffer pool en bytes
-SHOW VARIABLES LIKE 'innodb_buffer_pool_size';
+SELECT VARIABLE_VALUE AS valor FROM performance_schema.global_variables WHERE VARIABLE_NAME = 'innodb_buffer_pool_size';
 
 -- total de paginas usadas en el boofer pool
-SHOW STATUS LIKE 'Innodb_buffer_pool_pages_total';
+SELECT VARIABLE_VALUE AS valor FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Innodb_buffer_pool_pages_total';
 -- total de paginas libres en el buufer pool
-SHOW STATUS LIKE 'Innodb_buffer_pool_pages_free';
+SELECT VARIABLE_VALUE AS valor FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Innodb_buffer_pool_pages_free';
 -- total de paginas usadas en memoria pero no escritas en el disco
-SHOW STATUS LIKE 'Innodb_buffer_pool_pages_dirty';
+SELECT VARIABLE_VALUE AS valor FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Innodb_buffer_pool_pages_dirty';
 
 -- Hit ratio es el porecntaje de datos q se leen desde memoria y no en el disco en caso de q sea menos a 95 significa que lee mucho de disco y no de memoria
 -- Hit ratio = (read_requests - reads) / read_requests * 100
 SELECT
   (1 - (
     (SELECT VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Innodb_buffer_pool_reads') /
-    (SELECT VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Innodb_buffer_pool_read_requests')
+    NULLIF((SELECT VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Innodb_buffer_pool_read_requests'), 0)
   )) * 100 AS buffer_pool_hit_ratio;
 
 -- METRICAS DE BLOQUEO--
 
 -- cuantas veces tuvo q esperar una transaccion por un bloqueo de una fila
-SHOW STATUS LIKE 'Innodb_row_lock_waits';
--- tiempo medio q se espero en milisegundos 
-SHOW STATUS LIKE 'Innodb_row_lock_time_avg';
+SELECT VARIABLE_VALUE AS valor FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Innodb_row_lock_waits';
+-- tiempo medio q se espero en milisegundos
+SELECT VARIABLE_VALUE AS valor FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Innodb_row_lock_time_avg';
 
 -- total de deadlocks ocurridos debe ser 0
-SHOW STATUS LIKE 'Innodb_deadlocks';
+SELECT VARIABLE_VALUE AS valor FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Innodb_deadlocks';
 
 -- trasnsacciones abiertas en este instante
 SELECT * FROM information_schema.INNODB_TRX;
@@ -92,7 +92,8 @@ ORDER BY SUM_TIMER_WAIT DESC
 LIMIT 10;
 
 -- que locks estan esperando y que es lo q los bloquea
-SELECT * FROM performance_schema.data_lock_waits LIMIT 50;
+
+
 
 -- MANTENIMIENTO DE INDICES--
 -- indices declarados en la bbdd pero no usados nunca

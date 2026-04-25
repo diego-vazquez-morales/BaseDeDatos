@@ -21,7 +21,7 @@ DROP ROLE IF EXISTS 'rol_lectura', 'rol_escritura';
 CREATE USER 'app'@'%' IDENTIFIED WITH caching_sha2_password BY 'app1234_';
 
 -- Usuario Dashboard (puede acceder desde donde quiera)
-CREATE USER 'dashboard'@'%' IDENTIFIED WITH caching_sha2_password BY 'dashboard1234_';
+CREATE USER 'dashboard'@'%' IDENTIFIED  BY 'dashboard1234_';
 
 -- Usuario backup local (solo puede acceder localmente)
 CREATE USER 'backup'@'localhost' IDENTIFIED WITH caching_sha2_password BY 'backup1234_';
