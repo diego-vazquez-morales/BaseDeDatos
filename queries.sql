@@ -1,23 +1,30 @@
 USE rideHailing;
 
--- Insertamos un nuevo rider
-INSERT INTO rider (nombre, email) 
-VALUES ('Nuevo Rider', 'nuevo@email.com');
+/*+-----------------------------------------------------------+*/
+-- CREACIÓN DE UN NUEVO RIDER
+/*+-----------------------------------------------------------+*/
+-- Insertamos un nuevo rider (primero en usuario, luego en rider)
+INSERT INTO usuario (nombre, email, telefono, password)
+VALUES ('Nuevo Rider', 'nuevo@email.com', '699000001', 'hash_nuevo_rider');
 
--- Ver los riders
-SELECT * FROM rider;
-SELECT * FROM conductor;
-SELECT * FROM viaje;
+INSERT INTO rider (id_usuario, metodo_pago)
+VALUES (LAST_INSERT_ID(), 'tarjeta');
 
--- Eliminar un rider por su ID
+-- Buscamos el rider creado en usuarios
+SELECT nombre, email FROM rideHailing.usuario WHERE telefono = "699000001";
+
+-- Eliminamos el nuevo rider por su correo
 DELETE FROM rider
-WHERE id_rider = 10;
+WHERE email = "nuevo@email.com";
 
 -- ================================================
 -- PROCESO PARA UN VIAJE
 -- Insertar nuevo rider 
-INSERT INTO rider (nombre, email)
-VALUES ('Sofia Casado', 'sofiaCasado@gmail.com');
+INSERT INTO usuario (nombre, email, telefono, password)
+VALUES ('Sofia Casado', 'sofiaCasado@gmail.com', '699000002', 'hash_sofia');
+
+INSERT INTO rider (id_usuario, metodo_pago)
+VALUES (LAST_INSERT_ID(), 'tarjeta');
 
 -- Insertar nuevo viaje
 -- ditancia_km, duracion_minutos, precio_total NULL hasta que se finalice el viaje
@@ -134,8 +141,9 @@ SET activo = FALSE
 WHERE id_conductor = 3;
 
 -- Ver los que no están activos
-SELECT id_conductor, nombre, email, creado_en
-FROM conductor
+SELECT c.id_conductor, u.nombre, u.email, c.creado_en
+FROM conductor c
+JOIN usuario u ON u.id_usuario = c.id_usuario
 WHERE activo = FALSE;
 
 -- Ver conductores activos por company
@@ -157,10 +165,12 @@ WHERE oc.id_conductor = 1 AND oc.decision = 'pendiente'
 ORDER BY o.creado_en ASC;
 
 -- Vemos un viaje completo del rider, el conductor y el vehículo asignado ordenados por fecha de creación del viaje descendente
-SELECT v.id_viaje, r.nombre AS rider, c.nombre AS conductor, ve.matricula, ve.marca, ve.modelo, v.distancia_km, v.precio_total, v.estado, v.creado_en
+SELECT v.id_viaje, ur.nombre AS rider, uc.nombre AS conductor, ve.matricula, ve.marca, ve.modelo, v.distancia_km, v.precio_total, v.estado, v.creado_en
 FROM viaje v
 JOIN rider r ON v.id_rider = r.id_rider
+JOIN usuario ur ON ur.id_usuario = r.id_usuario
 LEFT JOIN conductor c ON v.id_conductor_aceptado = c.id_conductor
+LEFT JOIN usuario uc ON uc.id_usuario = c.id_usuario
 LEFT JOIN vehiculo ve ON c.id_conductor = ve.id_conductor
 ORDER BY v.creado_en DESC;
 
@@ -173,9 +183,10 @@ GROUP BY comp.id_company, comp.nombre
 ORDER BY conductores_activos DESC;
 
 -- Vemos el historial de los viajes del rider 1
-SELECT v.id_viaje, v.distancia_km, v.precio_total, v.estado, v.creado_en, c.nombre AS conductor
+SELECT v.id_viaje, v.distancia_km, v.precio_total, v.estado, v.creado_en, uc.nombre AS conductor
 FROM viaje v
 LEFT JOIN conductor c ON v.id_conductor_aceptado = c.id_conductor
+LEFT JOIN usuario uc ON uc.id_usuario = c.id_usuario
 WHERE v.id_rider = 1
 ORDER BY v.creado_en DESC;
 
@@ -191,18 +202,19 @@ ORDER BY c.nombre;
 -- METRICAS POR CONDUCTOR
 
 -- Tasa de aceptacion de ofertas por conductor
-SELECT c.nombre AS conductor,
+SELECT u.nombre AS conductor,
   COUNT(*) AS ofertas_recibidas,
   SUM(CASE WHEN oc.decision = 'aceptada' THEN 1 ELSE 0 END) AS aceptadas,
   ROUND(SUM(CASE WHEN oc.decision = 'aceptada' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS tasa_aceptacion_porcntual
   FROM oferta_conductor oc
   JOIN conductor c ON oc.id_conductor = c.id_conductor
-  GROUP BY c.id_conductor, c.nombre
+  JOIN usuario u ON u.id_usuario = c.id_usuario
+  GROUP BY c.id_conductor, u.nombre
   ORDER BY tasa_aceptacion_porcntual DESC;
 
 
 -- INgresos totales | euro km | euro minuto por conductor
-SELECT c.nombre AS conductor,
+SELECT u.nombre AS conductor,
   COUNT(v.id_viaje) AS viajes_realizados,
   ROUND(SUM(v.precio_total), 2) AS ingresos_totales,
   ROUND(SUM(v.distancia_km), 2) AS km_recorridos,
@@ -211,18 +223,20 @@ SELECT c.nombre AS conductor,
   ROUND(SUM(v.precio_total) / NULLIF(SUM(v.duracion_minutos), 0), 4) AS euro_por_minuto
 FROM viaje v
 JOIN conductor c ON v.id_conductor_aceptado = c.id_conductor
+JOIN usuario u ON u.id_usuario = c.id_usuario
 WHERE v.estado = 'finalizado'
-GROUP BY v.id_conductor_aceptado, c.nombre
+GROUP BY v.id_conductor_aceptado, u.nombre
 ORDER BY ingresos_totales DESC;
 
 -- Tiempo medio y km medio de viajes hechos por conductor
-SELECT c.nombre AS conductor,
+SELECT u.nombre AS conductor,
   ROUND(AVG(v.distancia_km), 2) AS distancia_media_km,
   ROUND(AVG(v.duracion_minutos), 2) AS duracion_media_minutos
 FROM viaje v
 JOIN conductor c ON v.id_conductor_aceptado = c.id_conductor
+JOIN usuario u ON u.id_usuario = c.id_usuario
 WHERE v.estado = 'finalizado'
-GROUP BY v.id_conductor_aceptado, c.nombre;
+GROUP BY v.id_conductor_aceptado, u.nombre;
 
 
 -- METRICAS POR COMPANY
