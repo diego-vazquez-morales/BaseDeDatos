@@ -35,11 +35,18 @@ CREATE TABLE usuario (
 
 -- Rider
 CREATE TABLE rider (
+<<<<<<< HEAD
     id_rider        BIGINT      NOT NULL AUTO_INCREMENT,
     id_usuario      BIGINT      NOT NULL,
     metodo_pago     ENUM('tarjeta','efectivo','paypal') NOT NULL DEFAULT 'tarjeta',
     ultimo_viaje    BIGINT      NULL,
     creado_en       TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+=======
+    id_rider  BIGINT      NOT NULL    AUTO_INCREMENT,
+    nombre    VARCHAR(80)     NOT NULL,
+    email     VARCHAR(120)    NOT NULL,
+    creado_en    TIMESTAMP   NOT NULL DEFAULT     CURRENT_TIMESTAMP,
+>>>>>>> develop
 
     PRIMARY KEY (id_rider),
     FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario)
@@ -48,6 +55,7 @@ CREATE TABLE rider (
 
 -- Conductor
 CREATE TABLE conductor (
+<<<<<<< HEAD
     id_conductor        BIGINT          NOT NULL AUTO_INCREMENT,
     id_usuario          BIGINT          NOT NULL,
     id_company          BIGINT          NOT NULL,
@@ -57,6 +65,15 @@ CREATE TABLE conductor (
     activo              BOOLEAN         NOT NULL DEFAULT TRUE,
     valoracion_media    DECIMAL(3,2)    DEFAULT NULL,
     creado_en           TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+=======
+    id_conductor    BIGINT  NOT NULL    AUTO_INCREMENT,
+    nombre  VARCHAR(80)     NOT NULL,
+    email   VARCHAR(120)    NOT NULL,
+    id_company  BIGINT  NOT NULL,
+    activo  BOOLEAN     NOT NULL    DEFAULT TRUE,
+    valoracion_media DECIMAL(3,2) DEFAULT NULL, 
+    creado_en  TIMESTAMP   NOT NULL DEFAULT     CURRENT_TIMESTAMP,
+>>>>>>> develop
 
     PRIMARY KEY (id_conductor),
     UNIQUE KEY uk_licencia (licencia),
@@ -68,6 +85,7 @@ CREATE TABLE conductor (
 
 -- Vehiculo
 CREATE TABLE vehiculo (
+<<<<<<< HEAD
     id_vehiculo     BIGINT      NOT NULL AUTO_INCREMENT,
     matricula       VARCHAR(16) NOT NULL,
     marca           VARCHAR(50) NOT NULL,
@@ -75,6 +93,15 @@ CREATE TABLE vehiculo (
     anio            YEAR        NOT NULL,
     id_conductor    BIGINT      NOT NULL,
     creado_en       TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+=======
+    id_vehiculo     BIGINT  NOT NULL    AUTO_INCREMENT,
+    matricula   VARCHAR(16)     NOT NULL,
+    marca   VARCHAR(50)     NOT NULL,
+    modelo  VARCHAR(50)     NOT NULL,
+    anio YEAR NOT NULL, 
+    id_conductor    BIGINT  NOT NULL,
+    creado_en  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+>>>>>>> develop
 
     PRIMARY KEY (id_vehiculo),
     UNIQUE KEY uk_matricula (matricula),
@@ -100,6 +127,7 @@ CREATE TABLE tarifa (
 
 -- Viaje
 CREATE TABLE viaje (
+<<<<<<< HEAD
     id_viaje                BIGINT          NOT NULL AUTO_INCREMENT,
     id_rider                BIGINT          NOT NULL,
     id_conductor_aceptado   BIGINT          NULL,
@@ -114,6 +142,23 @@ CREATE TABLE viaje (
     precio_total            DECIMAL(8,2)    NULL,
     creado_en               TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     actualizado_en          TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+=======
+    id_viaje    BIGINT  NOT NULL    AUTO_INCREMENT,
+    id_rider    BIGINT  NOT NULL,
+    id_conductor_aceptado BIGINT NULL,
+    id_tarifa    BIGINT  NULL,
+    origen_lat  DECIMAL(10,8)   NOT NULL,
+    origen_lon  DECIMAL(11,8)   NOT NULL,
+    destino_lat     DECIMAL(10,8)   NOT NULL,
+    destino_lon     DECIMAL(11,8)   NOT NULL,
+    distancia_km    DECIMAL(6,2)    NULL,
+    duracion_minutos DECIMAL(6,2)   NULL, 
+    estado ENUM('solicitado','aceptado','en_curso','finalizado','cancelado') DEFAULT 'solicitado',
+    precio_total DECIMAL(8,2) NULL,
+    
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    actualizado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+>>>>>>> develop
 
     PRIMARY KEY (id_viaje),
     INDEX idx_viaje_estado (estado),
@@ -147,7 +192,26 @@ CREATE TABLE oferta (
     creado_en   TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     PRIMARY KEY (id_oferta),
+<<<<<<< HEAD
     FOREIGN KEY (id_viaje) REFERENCES viaje(id_viaje)
+=======
+    FOREIGN KEY (id_viaje) REFERENCES viaje(id_viaje) 
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+-- Tabla intermedia del n:n Oferta <-> Conductor
+CREATE TABLE oferta_conductor (
+    id_oferta     BIGINT  NOT NULL,
+    id_conductor  BIGINT  NOT NULL,
+    decision ENUM('pendiente','aceptada','rechazada', 'expirada') NOT NULL DEFAULT 'pendiente',
+    respondida_en TIMESTAMP NULL,
+
+    PRIMARY KEY (id_oferta, id_conductor),
+    FOREIGN KEY (id_oferta) REFERENCES oferta(id_oferta) 
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    FOREIGN KEY (id_conductor) REFERENCES conductor(id_conductor) 
+>>>>>>> develop
         ON UPDATE CASCADE ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
