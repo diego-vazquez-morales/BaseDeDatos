@@ -48,6 +48,9 @@ GRANT SELECT ON rideHailing.company TO 'app'@'%';
 /*+-----------------------------------------------------------------------------------------------------+*/
 
 GRANT SELECT ON rideHailing.* TO 'dashboard'@'%';
+GRANT PROCESS ON *.* TO 'dashboard'@'%';
+GRANT SELECT ON performance_schema.* TO 'dashboard'@'%';
+GRANT SELECT ON sys.* TO 'dashboard'@'%';
 
 /*+-----------------------------------------------------------------------------------------------------+*/
 -- PERMISOS ADMIN
