@@ -22,7 +22,6 @@ CREATE TABLE rider (
     id_rider  BIGINT      NOT NULL    AUTO_INCREMENT,
     nombre    VARCHAR(80)     NOT NULL,
     email     VARCHAR(120)    NOT NULL,
-    valoracion_media DECIMAL(3,2) DEFAULT NULL, -- CAMPO AÑADIDO
     creado_en    TIMESTAMP   NOT NULL DEFAULT     CURRENT_TIMESTAMP,
 
     PRIMARY KEY (id_rider),
@@ -36,7 +35,7 @@ CREATE TABLE conductor (
     email   VARCHAR(120)    NOT NULL,
     id_company  BIGINT  NOT NULL,
     activo  BOOLEAN     NOT NULL    DEFAULT TRUE,
-    valoracion_media DECIMAL(3,2) DEFAULT NULL, -- CAMPO AÑADIDO
+    valoracion_media DECIMAL(3,2) DEFAULT NULL, 
     creado_en  TIMESTAMP   NOT NULL DEFAULT     CURRENT_TIMESTAMP,
 
     PRIMARY KEY (id_conductor),
@@ -52,7 +51,7 @@ CREATE TABLE vehiculo (
     matricula   VARCHAR(16)     NOT NULL,
     marca   VARCHAR(50)     NOT NULL,
     modelo  VARCHAR(50)     NOT NULL,
-    anio YEAR NOT NULL, -- CAMPO AÑADIDO
+    anio YEAR NOT NULL, 
     id_conductor    BIGINT  NOT NULL,
     creado_en  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -91,7 +90,7 @@ CREATE TABLE viaje (
     destino_lat     DECIMAL(10,8)   NOT NULL,
     destino_lon     DECIMAL(11,8)   NOT NULL,
     distancia_km    DECIMAL(6,2)    NULL,
-    duracion_minutos DECIMAL(6,2)   NULL, -- CAMPO AÑADIDO
+    duracion_minutos DECIMAL(6,2)   NULL, 
     estado ENUM('solicitado','aceptado','en_curso','finalizado','cancelado') DEFAULT 'solicitado',
     precio_total DECIMAL(8,2) NULL,
     
@@ -128,8 +127,6 @@ CREATE TABLE oferta (
 ) ENGINE=InnoDB;
 
 -- Tabla intermedia del n:n Oferta <-> Conductor
--- El indice unico parcial (en schema de indices) garantiza
--- que solo un conductor pueda tener decision='aceptada' por oferta
 CREATE TABLE oferta_conductor (
     id_oferta     BIGINT  NOT NULL,
     id_conductor  BIGINT  NOT NULL,

@@ -56,9 +56,9 @@ INSERT INTO tarifa (id_company, euro_por_km, euro_por_minuto, precio_base) VALUE
 -- Viajes
 INSERT INTO viaje (id_rider, id_tarifa, origen_lat, origen_lon, destino_lat, destino_lon, distancia_km, duracion_minutos, estado, precio_total, id_conductor_aceptado) VALUES
   (1, 1, 40.416775, -3.703790, 40.418056, -3.704444, 2.5, 15, 'finalizado', 5.00, 1),
-  (2, 2, 40.416775, -3.703790, 40.419000, -3.705000, 3.0, 20, 'finalizado', 6.50, 2),
+  (2, 2, 40.416775, -3.703790, 40.419000, -3.705000, 3.0, 20, 'finalizado', 6.50, 4),
   (3, 3, 40.416775, -3.703790, 40.420000, -3.706000, 4.0, 25, 'finalizado', 8.00, 4),
-  (4, 4, 40.416775, -3.703790, 40.421000, -3.707000, 5.0, 30, 'finalizado', 10.00, 5),
+  (4, 4, 40.416775, -3.703790, 40.421000, -3.707000, 5.0, 30, 'finalizado', 10.00, 1),
   (5, 5, 40.416775, -3.703790, 40.422000, -3.708000, 6.0, 35, 'cancelado', NULL, NULL),
   (6, 1, 40.416775, -3.703790, 40.423000, -3.709000, NULL, NULL, 'solicitado', NULL, NULL),
   (7, 2, 40.416775, -3.703790, 40.424000, -3.710000, NULL, NULL, 'solicitado', NULL, NULL),
@@ -75,10 +75,10 @@ INSERT INTO oferta (id_viaje, estado) VALUES
   (3, 'aceptada'),
   (4, 'aceptada'),
   (5, 'expirada'),
-  (6, 'aceptada'),
-  (7, 'aceptada'),
-  (8, 'aceptada'),
-  (9, 'aceptada'),
+  (6, 'pendiente'),
+  (7, 'pendiente'),
+  (8, 'pendiente'),
+  (9, 'pendiente'),
   (10, 'pendiente'),
   (11, 'pendiente');
 
@@ -109,7 +109,7 @@ INSERT INTO oferta_conductor (id_oferta, id_conductor, decision, respondida_en) 
 -- valoraciones de viajes
 INSERT INTO valoracion (id_viaje, id_rider, id_conductor, puntuacion, comentario) VALUES
   (1, 1, 1, 5, 'Excelente servicio, muy puntual y amable.'),
-  (2, 2, 2, 4, 'Buen viaje, aunque el conductor podría ser más amigable.'),
+  (2, 2, 4, 4, 'Buen viaje, aunque el conductor podría ser más amigable.'),
   (3, 3, 4, 5, 'Viaje perfecto, el conductor fue muy profesional.');
 
 UPDATE conductor SET valoracion_media = (SELECT AVG(puntuacion) FROM valoracion WHERE id_conductor = 1) WHERE id_conductor = 1;
@@ -139,17 +139,17 @@ INSERT INTO evento_viaje(id_viaje, id_conductor, tipo_evento, estado_anterior, e
   (1, 1, 'inicio', 'aceptado', 'en_curso'),
   (1, 1, 'finalizacion', 'en_curso', 'finalizado'),
 
-  (2, 2, 'aceptacion', 'solicitado', 'aceptado'),
-  (2, 2, 'inicio', 'aceptado', 'en_curso'),
-  (2, 2, 'finalizacion', 'en_curso', 'finalizado'),
+  (2, 4, 'aceptacion', 'solicitado', 'aceptado'),
+  (2, 4, 'inicio', 'aceptado', 'en_curso'),
+  (2, 4, 'finalizacion', 'en_curso', 'finalizado'),
 
   (3, 4, 'aceptacion', 'solicitado', 'aceptado'),
   (3, 4, 'inicio', 'aceptado', 'en_curso'),
   (3, 4, 'finalizacion', 'en_curso', 'finalizado'),
 
-  (4, 5, 'aceptacion', 'solicitado', 'aceptado'),
-  (4, 5, 'inicio', 'aceptado', 'en_curso'),
-  (4, 5, 'finalizacion', 'en_curso', 'finalizado'),
+  (4, 1, 'aceptacion', 'solicitado', 'aceptado'),
+  (4, 1, 'inicio', 'aceptado', 'en_curso'),
+  (4, 1, 'finalizacion', 'en_curso', 'finalizado'),
 
   (5, NULL, 'cancelacion', 'solicitado', 'cancelado');
 
