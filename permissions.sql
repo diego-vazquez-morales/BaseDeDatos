@@ -8,13 +8,13 @@ DROP USER IF EXISTS 'backup'@'localhost';
 DROP USER IF EXISTS 'admin'@'localhost';
 DROP ROLE IF EXISTS 'rol_lectura', 'rol_escritura';
 
+/*+-----------------------------------------------------------------------------------------------------+*/
 -- Creamos los usuarios:
 -- App (INSERT/UPDATE/SELECT datos) => Usuarios que utilizan nuestra apicación
 -- Dashboard (solo lectura) => Para herramientas de visualización de datos
 -- Backup local => Para el backup
 -- ADMIN => admin de la base de datos
 -- Todas las contraseñas van a estar hasheadas con SHA-256
-/*+-----------------------------------------------------------------------------------------------------+*/
 /*+-----------------------------------------------------------------------------------------------------+*/
 
 -- Usuario app (puedes acceder desde donde quiera)
@@ -28,10 +28,6 @@ CREATE USER 'backup'@'localhost' IDENTIFIED WITH caching_sha2_password BY 'backu
 
 -- Usuario ADMIN local (solo puede acceder localmente)
 CREATE USER 'admin'@'localhost' IDENTIFIED WITH caching_sha2_password BY 'dba1234_';
-
-/*+-----------------------------------------------------------------------------------------------------+*/
-/*+-----------------------------------------------------------------------------------------------------+*/
-
 
 -- PERMISOS DE APP
 /*+-----------------------------------------------------------------------------------------------------+*/
@@ -48,7 +44,7 @@ GRANT SELECT ON rideHailing.company TO 'app'@'%';
 
 /*+-----------------------------------------------------------------------------------------------------+*/
 -- PERMISOS DASBOARD
--- Permisos para dashboard, solo lectura en todas las tablas
+-- solo lectura en todas las tablas
 /*+-----------------------------------------------------------------------------------------------------+*/
 
 GRANT SELECT ON rideHailing.* TO 'dashboard'@'%';
@@ -64,7 +60,7 @@ GRANT ALL PRIVILEGES ON rideHailing.* TO 'admin'@'localhost';
 
 /*+-----------------------------------------------------------------------------------------------------+*/
 -- PERMISOS BACKUP
--- Permiso de lectura de todas las tablas, bloqueo de tablas para que no puedan otros modificar tablas mientras
+-- Lectura de todas las tablas, bloqueo de tablas para que no puedan otros modificar tablas mientras
 -- se hace la copia de seguridad, y ver las vistas para backup solo en localhost
 /*+-----------------------------------------------------------------------------------------------------+*/
 
@@ -77,28 +73,89 @@ GRANT SELECT, LOCK TABLES, SHOW VIEW ON rideHailing.* TO 'backup'@'localhost';
 /*+-----------------------------------------------------------------------------------------------------+*/
 CREATE ROLE 'rol_lectura', 'rol_escritura';
 
--- Permisos para rol_lectura, solo lectura en todas las tablas y rol_escritura puede insertar y actualizar en viaje solo
+-- rol_lectura puede hacer SELECT en cualquier tabla de ridehailing
 GRANT SELECT ON rideHailing.* TO 'rol_lectura';
+
+-- rol_escritura solo puede INSERT y UPDATE en la tabla viaje (no en toda la BD)
 GRANT INSERT, UPDATE ON rideHailing.viaje  TO 'rol_escritura';
 
--- Asignamos los roles a los usuarios correspondientes
+-- Asignamos los roles a los usuarios correspondientes segun su función
 GRANT 'rol_lectura'  TO 'dashboard'@'%';
 GRANT 'rol_escritura' TO 'app'@'%';
 
--- Activamos los roles por defecto para que se apliquen automáticamente al conectarse
+-- Por defecto MySQL no activa los roles al conectarse, 
+-- asi que los activamos automáticamente sin necesidad de hacer SET ROLE manualmente.
 SET DEFAULT ROLE ALL TO 'app'@'%';
 SET DEFAULT ROLE ALL TO 'dashboard'@'%';
 
--- Aplicamos los permisos
+-- Recargamos los privilegios en memoria para que todos los cambios tengan efecto inmediato
 FLUSH PRIVILEGES;
 
--- Verificamos los permisos asignados a cada usuario
+/*+-----------------------------------------------------------------------------------------------------+*/
+-- VISTAS DE SEGURIDAD
+-- Ocultamos las columnas sensibles de rider para que el dashboard no acceda a datos personales directamente
+/*+-----------------------------------------------------------------------------------------------------+*/
+CREATE OR REPLACE VIEW rideHailing.v_rider_publico AS
+SELECT r.id_rider, u.nombre
+FROM rideHailing.rider r
+JOIN rideHailing.usuario u ON u.id_usuario = r.id_usuario;
+ 
+-- El dashboard accede a la vista pública, no a la tabla completa (sin teléfono, email, etc.)
+GRANT SELECT ON rideHailing.v_rider_publico TO 'dashboard'@'%';
+
+/*+-----------------------------------------------------------------------------------------------------+*/
+-- GESTIÓN DE CUENTAS
+-- Ejemplo en el que bloqueamos backup local cuando no se necesite y expiración de contraseña
+/*+-----------------------------------------------------------------------------------------------------+*/
+ 
+-- Bloqueamos la cuenta backup, esto hay que hacerlo cuando no se esté ejecutando el proceso de backup
+ALTER USER 'backup'@'localhost' ACCOUNT LOCK;
+ 
+-- Luego la desbloqueamos cuando lo necesitamos
+ALTER USER 'backup'@'localhost' ACCOUNT UNLOCK;
+ 
+
+-- Forzamos el cambio de contraseña en el próximo login
+ALTER USER 'app'@'%' PASSWORD EXPIRE;
+
+/*+-----------------------------------------------------------------------------------------------------+*/
+-- AUDITORÍA Y SUPERVISIÓN
+-- Verificamos que los usuarios existen y comprobamos su estado
+/*+-----------------------------------------------------------------------------------------------------+*/
+ 
+-- Ver todas las cuentas y su estado (bloqueadas, contraseña expirada, plugin)
 SELECT user, host, plugin, account_locked, password_expired
 FROM mysql.user
-WHERE user IN ('app', 'dashboard', 'backup', 'dba');
-
+WHERE user IN ('app', 'dashboard', 'backup', 'admin')
+ORDER BY user, host;
+ 
+-- Mostramos los permisos concretos de cada usuario
 SHOW GRANTS FOR 'app'@'%';
 SHOW GRANTS FOR 'dashboard'@'%';
-
--- Ver las cuentas que tengan acceso desde cualquier host
+SHOW GRANTS FOR 'backup'@'localhost';
+SHOW GRANTS FOR 'admin'@'localhost';
+ 
+/*+-----------------------------------------------------------------------------------------------------+*/
+-- DETECCIÓN DE CONFIGURACIONES INSEGURAS
+-- Aquí comprobamos si exsiten cuentas que puedan representar un riesgo para la seguridad de nuestra base de 
+-- datos.
+/*+-----------------------------------------------------------------------------------------------------+*/
+ 
+-- Mostramos las cuentas que pueden conectarse desde cualquier host 
 SELECT user, host FROM mysql.user WHERE host = '%';
+ 
+-- Cuentas que pueden dar permisos a otros usuarios con GRANT OPTION (pueden dar permisos a otros usuarios)
+SELECT grantee, privilege_type
+FROM information_schema.user_privileges
+WHERE privilege_type = 'GRANT OPTION';
+ 
+-- Mostramos las cuentas con permisos globales ON *.* solo deberían tener todos los perimisos root y admin
+SELECT grantee, privilege_type
+FROM information_schema.user_privileges
+WHERE table_catalog = 'def';
+
+
+
+
+
+
