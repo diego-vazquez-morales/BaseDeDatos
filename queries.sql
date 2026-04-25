@@ -1,6 +1,6 @@
 USE rideHailing;
 
--- Insertar un nuevo rider
+-- Insertamos un nuevo rider
 INSERT INTO rider (nombre, email) 
 VALUES ('Nuevo Rider', 'nuevo@email.com');
 
