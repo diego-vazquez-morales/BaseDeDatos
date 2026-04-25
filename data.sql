@@ -42,16 +42,16 @@ INSERT INTO rider (id_usuario, metodo_pago) VALUES
   (9, 'paypal');
 
 -- Conductores (id_usuario 10-18)
-INSERT INTO conductor (id_usuario, id_company, licencia, activo) VALUES
-  (10, 1, 'LIC-001', TRUE),
-  (11, 1, 'LIC-002', TRUE),
-  (12, 2, 'LIC-003', FALSE),
-  (13, 3, 'LIC-004', TRUE),
-  (14, 3, 'LIC-005', TRUE),
-  (15, 4, 'LIC-006', TRUE),
-  (16, 4, 'LIC-007', TRUE),
-  (17, 5, 'LIC-008', TRUE),
-  (18, 5, 'LIC-009', TRUE);
+INSERT INTO conductor (id_usuario, id_company, licencia) VALUES
+  (10, 1, 'LIC-001'),
+  (11, 1, 'LIC-002'),
+  (12, 2, 'LIC-003'),
+  (13, 3, 'LIC-004'),
+  (14, 3, 'LIC-005'),
+  (15, 4, 'LIC-006'),
+  (16, 4, 'LIC-007'),
+  (17, 5, 'LIC-008'),
+  (18, 5, 'LIC-009');
 
 -- Vehiculos
 INSERT INTO vehiculo (matricula, marca, modelo, anio, id_conductor) VALUES

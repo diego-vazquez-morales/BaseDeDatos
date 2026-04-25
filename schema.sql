@@ -1,8 +1,11 @@
--- Active: 1777046817970@@127.0.0.1@3306@ride-hailing
+-- Active: 1777046817970@@127.0.0.1@3306@rideHailing
+
+
 
 CREATE DATABASE IF NOT EXISTS rideHailing
 CHARACTER SET utf8mb4
 COLLATE utf8mb4_0900_ai_ci;
+
 
 USE rideHailing;
 
@@ -38,6 +41,7 @@ CREATE TABLE rideHailing.usuario (
 CREATE TABLE rideHailing.rider (
     id_rider BIGINT NOT NULL AUTO_INCREMENT,
     id_usuario BIGINT NOT NULL,
+    metodo_pago ENUM('tarjeta','efectivo','paypal') NOT NULL DEFAULT 'tarjeta',
     creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     PRIMARY KEY (id_rider),
@@ -164,7 +168,6 @@ CREATE TABLE rideHailing.valoracion (
     creado_en       TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT verificacion_puntuacion CHECK (puntuacion BETWEEN 1 AND 5),
-
     -- Índices para columnas usadas frecuentemente en WHERE, JOIN y ORDER BY
     PRIMARY KEY (id_valoracion),
     UNIQUE KEY uk_valoracion_viaje (id_viaje),              -- Un viaje solo puede tener una valoración
