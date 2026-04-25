@@ -299,3 +299,28 @@ ORDER BY valoracion_media DESC;
 
 -- Vemos el plan de ejecución de una consulta para verificar que se está utilizando el índice en la columna estado del viaje
 EXPLAIN SELECT * FROM viaje WHERE estado='solicitado';
+
+
+
+DELIMITER $$
+
+CREATE TRIGGER trg_oferta_conductor_unica_aceptacion
+BEFORE UPDATE ON oferta_conductor
+FOR EACH ROW
+BEGIN
+    -- Si alguien intenta poner decision='aceptada', comprobamos que no haya otro conductor
+    -- que ya haya aceptado esa misma oferta
+    IF NEW.decision = 'aceptada' THEN
+        IF EXISTS (
+            SELECT 1 FROM oferta_conductor
+            WHERE id_oferta = NEW.id_oferta
+              AND decision = 'aceptada'
+              AND id_conductor != NEW.id_conductor
+        ) THEN
+            SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Ya existe un conductor que ha aceptado esta oferta';
+        END IF;
+    END IF;
+END$$
+
+DELIMITER ;

@@ -147,10 +147,10 @@ mkdir -p "${BACKUP_DIR}"
  # creamos backup comprimido para que no ocupe tanto
 docker exec mysql mysqldump \
   -uroot -prootpass \
-  --databases rideHailing \
-  --single-transaction \
-  --routines --triggers --events \
-  --set-gtid-purged=OFF \
+  -databases rideHailing \
+  -single-transaction \
+  -routines --triggers --events \
+  -set-gtid-purged=OFF \
   | gzip > "${BACKUP_DIR}/backup_${FECHA}.sql.gz"
   # comprobar si se creo correctamente
  if [ $? -eq 0 ]; then
