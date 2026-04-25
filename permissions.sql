@@ -4,8 +4,8 @@ USE mysql;
 -- Primero eliminamos los usuarios y los roles que podrían existir para evitar errores al crear los nuevos usuarios
 DROP USER IF EXISTS 'app'@'%';
 DROP USER IF EXISTS 'dashboard'@'%';
-DROP USER IF EXISTS 'backup'@'%';
-DROP USER IF EXISTS 'dba'@'localhost';
+DROP USER IF EXISTS 'backup'@'localhost';
+DROP USER IF EXISTS 'admin'@'localhost';
 DROP ROLE IF EXISTS 'rol_lectura', 'rol_escritura';
 
 -- Creamos los usuarios:
@@ -52,6 +52,9 @@ GRANT SELECT ON rideHailing.company TO 'app'@'%';
 /*+-----------------------------------------------------------------------------------------------------+*/
 
 GRANT SELECT ON rideHailing.* TO 'dashboard'@'%';
+GRANT PROCESS ON *.* TO 'dashboard'@'%';
+GRANT SELECT ON performance_schema.* TO 'dashboard'@'%';
+GRANT SELECT ON sys.* TO 'dashboard'@'%';
 
 /*+-----------------------------------------------------------------------------------------------------+*/
 -- PERMISOS ADMIN

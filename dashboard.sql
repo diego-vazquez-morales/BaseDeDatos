@@ -1,15 +1,15 @@
 
---aqui van las consultas para los 2 dashboards de la plataforma:
---Dashboard de métricas de base de datos para monitorización.
---Dashboard de métricas de negocio (viajes por hora, ofertas aceptadas, etc.).
+-- aqui van las consultas para los 2 dashboards de la plataforma:
+-- Dashboard de métricas de base de datos para monitorización.
+-- Dashboard de métricas de negocio (viajes por hora, ofertas aceptadas, etc.).
 
 
 
 
 
--- 1.--Dashboard de métricas de base de datos para monitorización.
+-- 1.-- Dashboard de métricas de base de datos para monitorización.
 
---Metricas de conexiones en la base de dato----
+-- Metricas de conexiones en la base de dato-- --
 
 -- Conexiones actuales
 SHOW STATUS LIKE 'Threads_connected';
@@ -25,9 +25,9 @@ SHOW STATUS LIKE 'Connection_errors_max_connections';
 
 
 
---METRICAS DE QUERIES--
+-- METRICAS DE QUERIES--
 
---total de queries ejecutadas desde q arranca el servidor
+-- total de queries ejecutadas desde q arranca el servidor
 SHOW STATUS LIKE 'Queries';
 
 -- total de select realizados
@@ -39,20 +39,20 @@ SHOW STATUS LIKE 'Com_update';
 -- total de delete realizados
 SHOW STATUS LIKE 'Com_delete';
 
---total de queries lentas son las que tardan mas del tiempo configurado (long_query_time)
+-- total de queries lentas son las que tardan mas del tiempo configurado (long_query_time)
 SHOW STATUS LIKE 'Slow_queries';
 
 
---METRICAS DE INNOBD (BUFFER POOL)--
+-- METRICAS DE INNOBD (BUFFER POOL)--
 
 -- Tamaño del buffer pool en bytes
 SHOW VARIABLES LIKE 'innodb_buffer_pool_size';
 
---total de paginas usadas en el boofer pool
+-- total de paginas usadas en el boofer pool
 SHOW STATUS LIKE 'Innodb_buffer_pool_pages_total';
---total de paginas libres en el buufer pool
+-- total de paginas libres en el buufer pool
 SHOW STATUS LIKE 'Innodb_buffer_pool_pages_free';
---total de paginas usadas en memoria pero no escritas en el disco
+-- total de paginas usadas en memoria pero no escritas en el disco
 SHOW STATUS LIKE 'Innodb_buffer_pool_pages_dirty';
 
 -- Hit ratio es el porecntaje de datos q se leen desde memoria y no en el disco en caso de q sea menos a 95 significa que lee mucho de disco y no de memoria
@@ -63,11 +63,11 @@ SELECT
     (SELECT VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME = 'Innodb_buffer_pool_read_requests')
   )) * 100 AS buffer_pool_hit_ratio;
 
---METRICAS DE BLOQUEO--
+-- METRICAS DE BLOQUEO--
 
 -- cuantas veces tuvo q esperar una transaccion por un bloqueo de una fila
 SHOW STATUS LIKE 'Innodb_row_lock_waits';
---tiempo medio q se espero en milisegundos 
+-- tiempo medio q se espero en milisegundos 
 SHOW STATUS LIKE 'Innodb_row_lock_time_avg';
 
 -- total de deadlocks ocurridos debe ser 0
@@ -78,32 +78,46 @@ SELECT * FROM information_schema.INNODB_TRX;
 
 
 
---QUERIES LENTAS--
+-- QUERIES LENTAS--
 
---muestra las 10 queries q fueron mas lentas ordenadas
-SELECT * FROM sys.statement_analysis ORDER BY total_latency DESC LIMIT 10;
---que locks estan esperando y que es lo q los bloquea
-SELECT * FROM performance_schema.data_lock_waits LIMIT 50;
-
---PREGUNTAR EQUPO SI PREGIEREN ESTA EN VEZ DE LA DE ARRIBA ESTA ES MAS ESPECIFICA Y NO SE APOYA EN UN * SINO COGE LO UNICO ESENCIA EN EL SELECT
+-- muestra las 10 queries q fueron mas lentas ordenadas
 SELECT
-    query,
-    exec_count        AS ejecuciones,
-    avg_latency       AS media,
-    max_latency       AS maximo,
-    total_latency     AS total
-FROM sys.statement_analysis
-ORDER BY total_latency DESC
+    DIGEST_TEXT                                   AS query,
+    COUNT_STAR                                    AS ejecuciones,
+    ROUND(AVG_TIMER_WAIT / 1000000000000, 6)      AS media,
+    ROUND(MAX_TIMER_WAIT / 1000000000000, 6)      AS maximo,
+    ROUND(SUM_TIMER_WAIT / 1000000000000, 6)      AS total
+FROM performance_schema.events_statements_summary_by_digest
+ORDER BY SUM_TIMER_WAIT DESC
 LIMIT 10;
 
---MANTENIMIENTO DE INDICES--
---indices declarados en la bbdd pero no usados nunca
-SELECT * FROM sys.schema_unused_indexes;
---indices que estan duplicados y no apartan nada nuevo
-SELECT * FROM sys.schema_redundant_indexes;
+-- que locks estan esperando y que es lo q los bloquea
+SELECT * FROM performance_schema.data_lock_waits LIMIT 50;
+
+-- MANTENIMIENTO DE INDICES--
+-- indices declarados en la bbdd pero no usados nunca
+SELECT
+    object_schema   AS base_de_datos,
+    object_name     AS tabla,
+    index_name      AS indice
+FROM performance_schema.table_io_waits_summary_by_index_usage
+WHERE index_name IS NOT NULL
+  AND count_star = 0
+  AND object_schema = 'rideHailing'
+ORDER BY object_schema, object_name;
+
+-- indices que estan duplicados y no apartan nada nuevo
+SELECT
+    s.TABLE_NAME        AS tabla,
+    s.INDEX_NAME        AS indice,
+    s.COLUMN_NAME       AS columna,
+    s.SEQ_IN_INDEX      AS posicion
+FROM information_schema.STATISTICS s
+WHERE s.TABLE_SCHEMA = 'rideHailing'
+ORDER BY s.TABLE_NAME, s.INDEX_NAME, s.SEQ_IN_INDEX;
 
 
---2.Dashboard de métricas de negocio (viajes por hora, ofertas aceptadas, etc.).
+-- 2.Dashboard de métricas de negocio (viajes por hora, ofertas aceptadas, etc.).
 
 
 -- VIAJES POR HORA
@@ -187,7 +201,7 @@ GROUP BY co.id_company, co.nombre
 ORDER BY tasa_aceptacion_pct DESC;
 
 
---MIRAR DAVID
+-- MIRAR DAVID
 -- INGRESOS POR CONDUCTOR
 -- Suma los precios de todos los viajes finalizados de cada conductor.
 -- También calcula euros/km como métrica de eficiencia.
