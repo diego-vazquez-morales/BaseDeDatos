@@ -9,16 +9,35 @@ DROP USER IF EXISTS 'dba'@'localhost';
 DROP ROLE IF EXISTS 'rol_lectura', 'rol_escritura';
 
 -- Creamos los usuarios:
--- App (INSERT/UPDATE/SELECT datos)
--- Dashboard (solo lectura)
--- Backup local
--- DBA local
-CREATE USER 'app'@'%' IDENTIFIED WITH caching_sha2_password BY 'app1234_';
-CREATE USER 'dashboard'@'%' IDENTIFIED WITH caching_sha2_password BY 'dashboard1234_';
-CREATE USER 'backup'@'localhost' IDENTIFIED WITH caching_sha2_password BY 'backup1234_';
-CREATE USER 'dba'@'localhost' IDENTIFIED WITH caching_sha2_password BY 'dba1234_';
+-- App (INSERT/UPDATE/SELECT datos) => Usuarios que utilizan nuestra apicación
+-- Dashboard (solo lectura) => Para herramientas de visualización de datos
+-- Backup local => Para el backup
+-- ADMIN => admin de la base de datos
+-- Todas las contraseñas van a estar hasheadas con SHA-256
+/*+-----------------------------------------------------------------------------------------------------+*/
+/*+-----------------------------------------------------------------------------------------------------+*/
 
--- Permisos para app, selección, inserción y actualización en viaje, oferta y oferta_conductor. Selección e inserción en rider. Solo selección en conductor, vehiculo y company
+-- Usuario app (puedes acceder desde donde quiera)
+CREATE USER 'app'@'%' IDENTIFIED WITH caching_sha2_password BY 'app1234_';
+
+-- Usuario Dashboard (puede acceder desde donde quiera)
+CREATE USER 'dashboard'@'%' IDENTIFIED WITH caching_sha2_password BY 'dashboard1234_';
+
+-- Usuario backup local (solo puede acceder localmente)
+CREATE USER 'backup'@'localhost' IDENTIFIED WITH caching_sha2_password BY 'backup1234_';
+
+-- Usuario ADMIN local (solo puede acceder localmente)
+CREATE USER 'admin'@'localhost' IDENTIFIED WITH caching_sha2_password BY 'dba1234_';
+
+/*+-----------------------------------------------------------------------------------------------------+*/
+/*+-----------------------------------------------------------------------------------------------------+*/
+
+
+-- PERMISOS DE APP
+/*+-----------------------------------------------------------------------------------------------------+*/
+-- Permisos para app, selección, inserción y actualización en viaje, oferta y oferta_conductor. 
+-- Selección e inserción en rider. Solo selección en conductor, vehiculo y company.
+/*+-----------------------------------------------------------------------------------------------------+*/
 GRANT SELECT, INSERT, UPDATE ON rideHailing.viaje TO 'app'@'%';
 GRANT SELECT, INSERT, UPDATE ON rideHailing.oferta TO 'app'@'%';
 GRANT SELECT, INSERT, UPDATE ON rideHailing.oferta_conductor TO 'app'@'%';
@@ -27,17 +46,32 @@ GRANT SELECT ON rideHailing.conductor TO 'app'@'%';
 GRANT SELECT ON rideHailing.vehiculo TO 'app'@'%';
 GRANT SELECT ON rideHailing.company TO 'app'@'%';
 
+/*+-----------------------------------------------------------------------------------------------------+*/
+-- PERMISOS DASBOARD
 -- Permisos para dashboard, solo lectura en todas las tablas
+/*+-----------------------------------------------------------------------------------------------------+*/
+
 GRANT SELECT ON rideHailing.* TO 'dashboard'@'%';
 
--- Permiso completo para dba solo en localhost
-GRANT ALL PRIVILEGES ON rideHailing.* TO 'dba'@'localhost';
+/*+-----------------------------------------------------------------------------------------------------+*/
+-- PERMISOS ADMIN
+-- Permiso completo para el ADMIN solo en localhost
+/*+-----------------------------------------------------------------------------------------------------+*/
+GRANT ALL PRIVILEGES ON rideHailing.* TO 'admin'@'localhost';
 
--- Permiso de lectura de todas las tablas, bloqueo de tablas para que no puedan otros modificar tablas mientras se hace la copia de seguridad, y ver las vistas para backup solo en localhost
+/*+-----------------------------------------------------------------------------------------------------+*/
+-- PERMISOS BACKUP
+-- Permiso de lectura de todas las tablas, bloqueo de tablas para que no puedan otros modificar tablas mientras
+-- se hace la copia de seguridad, y ver las vistas para backup solo en localhost
+/*+-----------------------------------------------------------------------------------------------------+*/
+
 GRANT SELECT, LOCK TABLES, SHOW VIEW ON rideHailing.* TO 'backup'@'localhost';
 
-
--- Roles de lectura y escritura para facilitar la gestión de permisos
+/*+-----------------------------------------------------------------------------------------------------+*/
+-- ROLES
+-- Rol Lectura  => Permite consultar datos sin poder modificarlos. Asignado a usuarios como dashboard.
+-- Rol Escritura => Permite insertar, actualizar y eliminar datos. Asignado a usuarios como app.
+/*+-----------------------------------------------------------------------------------------------------+*/
 CREATE ROLE 'rol_lectura', 'rol_escritura';
 
 -- Permisos para rol_lectura, solo lectura en todas las tablas y rol_escritura puede insertar y actualizar en viaje solo
