@@ -164,20 +164,6 @@ CREATE TABLE oferta_conductor (
         ON UPDATE CASCADE ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
--- Tabla intermedia del n:n Oferta <-> Conductor
-CREATE TABLE oferta_conductor (
-    id_oferta       BIGINT      NOT NULL,
-    id_conductor    BIGINT      NOT NULL,
-    decision        ENUM('pendiente','aceptada','rechazada','expirada') NOT NULL DEFAULT 'pendiente',
-    respondida_en   TIMESTAMP   NULL,
-
-    PRIMARY KEY (id_oferta, id_conductor),
-    FOREIGN KEY (id_oferta) REFERENCES oferta(id_oferta)
-        ON UPDATE CASCADE ON DELETE RESTRICT,
-    FOREIGN KEY (id_conductor) REFERENCES conductor(id_conductor)
-        ON UPDATE CASCADE ON DELETE RESTRICT
-) ENGINE=InnoDB;
-
 -- Valoracion
 CREATE TABLE valoracion (
     id_valoracion   BIGINT          NOT NULL AUTO_INCREMENT,

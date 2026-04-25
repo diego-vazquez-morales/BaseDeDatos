@@ -174,6 +174,7 @@ Al existir la entidad conductor estos deben tener algun vehículo donde llevar a
 
 ### 6. TARIFA
 
+Esta tabla ha sido creada con el motivo de tener los precios aislados del resto del sistema. Cada company define su propia tarifa con tres componentes: un precio_base fijo al inicio de cada viaje, un coste por kilometro y un coste por minuto. La relación con company es 1:N ya que un company puede tener multiples tarifas a lo largo del tiempo debido al campo vigente_desde. Esto permite tener un historial de los precios y los cambios que se hagan a lo largo del tiempo sin afevttar viajes que ya se hayan realizados. Cada viaje referencia la tarifa que esta vigente en el momento de su creacion. 
 
 ---
 
@@ -191,16 +192,19 @@ Los viajes generan ofertas que son lanzadas a todos los conductores y estas solo
 
 ### 9. OFERTA_CONDUCTOR
 
+Esta es la tabla intermedia que resulta de la relacion N:N entre oferta y conductor. Cuando un rider solicita un viaje, el sistema crea una oferta y la envia a todos los conductores que esten activos, insertando una fila en esa tabla por cada condcutor con el campo decision=pendiente. El primer conductor que acepta la oferta, inicia una transaccion que actualiza su fila en el campo de decision a decision = aceptada, se rechaza automaticamente al resto. Para poder garantizar que nunca haya dos conductores con el campo decision = aceptada para una misma oferta, hemos implementado un trigger BEFORE UPDATE, este lanza un error si se intenta aceptar una oferta que ya ha sifo aceptada previamente. 
 
 ---
 
 ### 10. VALORACION
 
+Esta tabla recoge la puntuacion que un rider le da a un conductor tras finalizar un viaje. La relacion con viaje tiene un UNIQUE KEY sobre id_viaje garantizando que solo puede existir una valoracion por viaje. La puntuacion esta entre un rango entre 1 y 5 mediante un CHECK constraint. Tras cada insercion de valoracion, se actualiza el campo de valoracion_media del cconductor correspondiente. La tabla tambien indexa id_conductor e id_rider para acelerar las consultas de metricas de rendimiento por conductor y por company.
 
 ---
 
 ### 11. EMPRESA_VEHICULO
 
+Esta tabla resulta de la relacion N:N entre company y vehiculo. Un vehiculo puede estar asignado a diferentes empresas a lo largo del tiempo y una empresa puede gestionar multiples vehiculos simultaneamente. La Primary Key esta compuesta por id_company, id_vehiculo y fecha_asignacion, esto permite registrar reasignaciones que puedan haber a lo largo del tiempo sin perder un historial. Cuando el campo fecha_fin es NULL, quiere decir que la asignacion esta vigente actualmente, esto permite filtrar de forma facil y rapida los vehiculos que hay activos en las empresas.
 
 ---
 
