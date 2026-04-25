@@ -9,6 +9,8 @@
 --Definimos el RPO =  hora --> que es la maxima 1 hora de perdida de datos  y un RTO de = 4 horas donde el sistema pueda restaurarse.
 --Pero apuntamos a crear un sistema hibrido con backup completo + binlog + replicas para hacerlo de la forma mas segura.
 
+--Al final del .sql vienen los pasos para ejecutar los backups
+
 --Verificar que el Binlog esta activo  para PITR (recuperar en el momento exacto)
 SHOW VARIABLES LIKE 'log_bin';                       -- Debe ser ON
 SHOW VARIABLES LIKE 'binlog_format';                 -- Recomendado: ROW
@@ -20,52 +22,78 @@ SHOW BINARY LOGS;
 
 --Con la poca cantidad de datos que manejamos vamos a optar por un backup logico 
 --antes que por uno fisico ya que asi es mas tiene una mayor portabiliad y es mas senciullo
--- ─────────────────────────────────────────────────────────────────
+-
+--  AUTOMATIZACION DE LOS BACKUPS
+--  Dejamos automatizados los backups para que se realicen cada hora y eliminen los backups que tengan mas de 5 dias
 
---Preguntar equipo cual prefiere
+-- #!/bin/bash
+-- # backup_ridehailing.sh
+--
+-- FECHA=$(date +%Y%m%d_%H%M%S)
+-- BACKUP_DIR="/backups/mysql"
+-- RETENTION_DAYS=5
+--
+-- # creamos backup comprimido para que no ocupe tanto
+-- docker exec mysql mysqldump \
+--   -uroot -prootpass \
+--   --databases rideHailing \
+--   --single-transaction \
+--   --routines --triggers --events \
+--   --set-gtid-purged=OFF \
+--   | gzip > "${BACKUP_DIR}/backup_${FECHA}.sql.gz"
+--
+-- # comprobar si se creo correctamente
+-- if [ $? -eq 0 ]; then
+--   echo "Backup creado: backup_${FECHA}.sql.gz"
+-- else
+--   echo "ERROR: Backup falló" >&2
+--   exit 1
+-- fi
+--
+--  #eliminamos los backups con mas de 5 dias
+-- find ${BACKUP_DIR} -name "backup_*.sql.gz" -mtime +${RETENTION_DAYS} -delete
+-- echo "Backups con más de ${RETENTION_DAYS} días eliminados"
+--
+--  # Para que el backup se ejecute cada hora.
+--   0 * * * * /scripts/backup_ridehailing.sh >> /var/log/mysql_backup.log 2>&1
 
 
--- COMANDO ((ejecutar en la terminal)
---
---   docker exec mysql mysqldump \
---     -uroot -prootpass \
---     --databases rideHailing \
---     --single-transaction \
---     --routines --triggers --events \
---     --set-gtid-purged=OFF \
---     > backup_rideHailing_$(date +%Y%m%d).sql
---
--- Para incluir también usuarios y privilegios (base de datos mysql):
---
---   docker exec mysql mysqldump \
---     -uroot -prootpass \
---     --all-databases \
---     --single-transaction \
---     --routines --triggers --events \
---     --set-gtid-purged=OFF \
---     > backup_completo.sql
---
 
-
-
--- la restauracion (ejecutar desde terminal/bash)
+-- restauramos el archivo backup sql que necesitamos
 --
--- Una vez tenemos el archivo .sql, lo restauramos así:
---
---   cat backup_rideHailing_FECHA.sql \
+--   gunzip -c backup_rideHailing_Fecha.sql.gz  \ #poner nombre tu archivo
 --     | docker exec -i mysql mysql -uroot -prootpass
 --
-────────────────────────────────────────────
--- Verificacion tras restauracion
---
---Tras la restauracion hacemos comandos basicos para saber si todo esta bien
 
+
+--  Uso de PITR 
+--
+--Pitr nos permite recuperar la bd haste el momento exacto graciasn a binlog
+
+-- PASOS (ejecutar en terminal):
+--
+--   1. Restaurar el ultimo backup
+--     gunzip -c backup_rideHailing_Fecha.sql.gz  \ #poner nombre tu archivo
+--        | docker exec -i mysql mysql -uroot -prootpass
+--
+--   2. Extraer del binlog solo los cambios hasta a hora necesaria
+--      docker exec mysql mysqlbinlog \
+--        --start-datetime="año-mes-dia hora:minuto:segundos" \ #hora de inicio
+--        --stop-datetime="año-mes-dia hora:minuto:segundos" \ #hora de fin
+--        /var/lib/mysql/binlog.000001 > cambios.sql
+--
+--   3. Aplicar esos cambios sobre la BD restaurada
+--      cat cambios.sql | docker exec -i mysql mysql -uroot -prootpass
+
+
+
+--  Comprobamos si se verifico todo correctamnte
 USE rideHailing;
 
--- Verificar que todas las tablas existen
+-- ver si todas las tablas existen
 SHOW TABLES;
 
--- Conteo de filas por tabla para comparar con el backup original
+-- contamos las filas de cada tabla
 SELECT 'company'         AS tabla, COUNT(*) AS filas FROM company
 UNION ALL
 SELECT 'rider',                    COUNT(*)          FROM rider
@@ -82,97 +110,20 @@ SELECT 'oferta_conductor',         COUNT(*)          FROM oferta_conductor
 UNION ALL
 SELECT 'empresa_vehiculo',         COUNT(*)          FROM empresa_vehiculo;
 
--- Verificar integridad de las claves foráneas (no deben aparecer huérfanos)
+-- vemos que las claves foraneas no aparezcan desligadas
 SELECT TABLE_NAME, CONSTRAINT_NAME, REFERENCED_TABLE_NAME
 FROM information_schema.KEY_COLUMN_USAGE
 WHERE TABLE_SCHEMA = 'rideHailing'
   AND REFERENCED_TABLE_NAME IS NOT NULL;
 
--- Consulta crítica de negocio: viajes en los últimos 7 días
--- Si devuelve resultados coherentes, el restore fue correcto
+-- Mostramos los 7 dias todos los viajes para ver si muestra datos coherentes
 SELECT estado, COUNT(*) AS total
 FROM viaje
 WHERE creado_en >= NOW() - INTERVAL 7 DAY
 GROUP BY estado;
 
 
-
---  Uso de PITR 
---
---Pitr nos permite recuperar la bd haste el momento exacto graciasn a binlog
-
--- PASOS (ejecutar en terminal):
---
---   1. Restaurar el ultimo backup
---      cat backup_rideHailing_20250101.sql \
---        | docker exec -i mysql mysql -uroot -prootpass
---
---   2. Extraer del binlog solo los cambios hasta a hora necesaria
---      docker exec mysql mysqlbinlog \
---        --start-datetime="2025-01-01 10:00:00" \
---        --stop-datetime="2025-01-01 10:44:59" \
---        /var/lib/mysql/binlog.000001 > cambios.sql
---
---   3. Aplicar esos cambios sobre la BD restaurada
---      cat cambios.sql | docker exec -i mysql mysql -uroot -prootpass
---
--- Para identificar el momento exacto del DELETE en el binlog:
---      docker exec mysql mysqlbinlog \
---        --start-datetime="2025-01-01 10:40:00" \
---        --stop-datetime="2025-01-01 10:50:00" \
---        /var/lib/mysql/binlog.000001 | grep -A5 -B5 "DELETE"
---
-
-
--- ─────────────────────────────────────────────────────────────────
--- 7. AUTOMATIZACIÓN CON SCRIPT DE ROTACIÓN
---
--- El siguiente script de bash hace backup diario y borra backups
--- con más de 7 días para no llenar el disco.
--- Basado en: 06_backup.md §7.1 "Script de backup con rotación"
---
--- #!/bin/bash
--- # backup_ridehailing.sh
---
--- FECHA=$(date +%Y%m%d_%H%M%S)
--- BACKUP_DIR="/backups/mysql"
--- RETENTION_DAYS=5
---
--- # Crear backup comprimido
--- docker exec mysql mysqldump \
---   -uroot -prootpass \
---   --databases rideHailing \
---   --single-transaction \
---   --routines --triggers --events \
---   --set-gtid-purged=OFF \
---   | gzip > "${BACKUP_DIR}/backup_${FECHA}.sql.gz"
---
--- # Verificar que se creó correctamente
--- if [ $? -eq 0 ]; then
---   echo "Backup creado: backup_${FECHA}.sql.gz"
--- else
---   echo "ERROR: Backup falló" >&2
---   exit 1
--- fi
---
--- # Eliminar backups con más de 5días
--- find ${BACKUP_DIR} -name "backup_*.sql.gz" -mtime +${RETENTION_DAYS} -delete
--- echo "Backups con más de ${RETENTION_DAYS} días eliminados"
---
--- Programar con cron para que se ejecute cada día a las 3:00 AM:
---   0 3 * * * /scripts/backup_ridehailing.sh >> /var/log/mysql_backup.log 2>&1
-
--- ─────────────────────────────────────────────────────────────────
--- 8. USUARIO DE BACKUP
---
--- El usuario 'backup'@'localhost' ya está creado en permissions.sql
--- con los permisos mínimos necesarios: SELECT, LOCK TABLES, SHOW VIEW.
--- Esto sigue el principio de mínimo privilegio: el proceso de backup
--- solo puede leer datos, no modificarlos.
--- Basado en: 06_backup.md §2.2 opción --single-transaction
--- ─────────────────────────────────────────────────────────────────
-
--- Verificar que el usuario de backup existe y tiene los permisos correctos
+-- Verificar que el usuario de backup existe y tiene los permisos correctos (debe tener los permisos minimos)
 USE mysql;
 SELECT user, host, plugin, account_locked
 FROM mysql.user
@@ -181,3 +132,53 @@ WHERE user = 'backup';
 SHOW GRANTS FOR 'backup'@'localhost';
 
 
+
+--Pasos para ejecutar el codigo de backup automatico
+--1. docker compose up -d
+--2. docker compose ps
+--3. ejecutar: La automatizacion del backup
+#!/bin/bash
+ # backup_ridehailing.sh
+ FECHA=$(date +%Y%m%d_%H%M%S)
+BACKUP_DIR="/backups/mysql"
+RETENTION_DAYS=5
+
+mkdir -p "${BACKUP_DIR}"
+ # creamos backup comprimido para que no ocupe tanto
+docker exec mysql mysqldump \
+  -uroot -prootpass \
+  --databases rideHailing \
+  --single-transaction \
+  --routines --triggers --events \
+  --set-gtid-purged=OFF \
+  | gzip > "${BACKUP_DIR}/backup_${FECHA}.sql.gz"
+  # comprobar si se creo correctamente
+ if [ $? -eq 0 ]; then
+  echo "Backup creado: backup_${FECHA}.sql.gz"
+else
+  echo "ERROR: Backup falló" >&2
+  exit 1
+fi
+  #eliminamos los backups con mas de 5 dias
+find ${BACKUP_DIR} -name "backup_*.sql.gz" -mtime +${RETENTION_DAYS} -delete
+echo "Backups con más de ${RETENTION_DAYS} días eliminados"
+  # Para que el backup se ejecute cada hora.
+-- 0 * * * * /scripts/backup_ridehailing.sh >> /var/log/mysql_backup.log 2>&1
+--4. Verificar que se creo ls -lh backup_rideHailing_*.sql.gz
+
+--Pasos de restauracion
+--1. docker compose ps
+--2. Restaura el ultimo backup:
+--   gunzip -c backup_rideHailing_Fecha.sql.gz \ #poner nombre tu archivo cque esta en .gz
+--        | docker exec -i mysql mysql -uroot -prootpass
+--3. Extraer del binlog solo los cambios hasta a hora necesaria
+--      docker exec mysql mysqlbinlog \
+--        --start-datetime="año-mes-dia hora:minuto:segundos" \ #hora de inicio
+--        --stop-datetime="año-mes-dia hora:minuto:segundos" \ #hora de fin
+--        /var/lib/mysql/binlog.000001 > cambios.sql
+--4. Aplicar esos cambios sobre la BD restaurada
+--      cat cambios.sql | docker exec -i mysql mysql -uroot -prootpass
+--5. hacer pruebas tras restore
+
+
+docker exec -it mysql mysql -uroot -prootpass
