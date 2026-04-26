@@ -38,7 +38,7 @@ erDiagram
         bigint id_conductor PK
         bigint id_usuario FK
         bigint id_company FK
-        varchar licensia UK
+        varchar licencia UK
         decimal valoracion_media
         timestamp creado_en
     }
@@ -244,6 +244,8 @@ Hemos implementado dos triggers en el sistema:
 
 Uno de los aspectos mas importantes del sistema es que se pueda garantizar que cuando varios conductores intentan aceptar la misma oferta al mismo tiempo, solo uno de ellos pueden quedar con esta. Para resolver esto usamos **SELECT ... FOR UPDATE** dentro de una transaccion antes de actualizar la decision del conductor. 
 Lo que hace FOR UPDATE es bloquear la fila de ese conductor en la tabla `oferta_conductor` para que ninguna otra sesion pueda modificarla hasta que termine la transaccion. Si dos conductores intentan aceptar la misma oferta al mismo tiempo, el segundo tendra que esperar a que el primero termine y cuando sea su turno vera que la oferta ya ha sido aceptada.
+
+Adicionalmente hemos implementado el trigger `trg_oferta_conductor_unica_aceptacion` que actúa como otro mecanismo de seguridad. Este ayuda a garantizar que aunque se llegue al UPDATE, no se podrán quedar dos conductores con `decision = 'aceptada'` para una misma oferta
 
 
 ## Dashboard EXPLICACION:
