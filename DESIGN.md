@@ -250,33 +250,35 @@ Adicionalmente hemos implementado el trigger `trg_oferta_conductor_unica_aceptac
 
 ## Dashboard EXPLICACION:
 
-El dashboard de nuestra aplicación Ride_halling lo hemos dividido en dos secciones especializadas: uno para la monitarizacion de la bases de datos y otro para las métricas de negocio.
-A su vez, hemos integrado grafana la cual nos muestra en timpo real el estado tecnico de la base de datos sin que la tengamos que ejecutar manualmente. Pero esas solo cubren los datos que extrae el propio export y pasa a grafana gracias a prometheus pero igualmente se puede jecutar a mano todo el dashboard con nuestras queries que tienen datos de negocio que no aparecen en grafana
+El dashboard de nuestra aplicación Ride_halling lo hemos dividido en dos secciones especializadas: uno para la monitarización de la bases de datos y otro para las métricas de negocio.
+A su vez, hemos integrado Grafana la cual nos muestra en timpo real el estado técnico de la base de datos sin que la tengamos que ejecutar manualmente. Pero esas sólo cubren los datos que extrae el propio export y pasa a Grafana gracias a Prometheus pero igualmente se puede jecutar manualmente todo el dashboard con nuestras queries que tienen datos de negocio que no aparecen en Grafana
 
 ### 1.Monitorizacion de la base de datos:
-Este dashboard recogen métricas clave para comprobar que la base de datos esta funcionando correctamente. Procederemos a listarlas y explicar porque son importantes:
--Metricas de conexiones: las utilizamos para ver si llegamos al limite de conexiones simultaneas que podemos soportar antes de rechazar la conexión de clientes. Con Threads_connected observamos cuantas conexiones hay abiertas ahora mismo. A su vez con max_used_connections observamos cual es el pico máximo de conexiones que hemos tenido simultáneamente que lo complementamos con Connection:error_max_connection para comprobar si hemos rechazado alguna conexión, siempre debe ser 0 porque sino significa que hemos rechazado conexiones.
--Queries: estas están enfocadas en analizar si la base de datos se utiliza mas en escritura o lectura. Ademas con Slow_queries podemos saber si las consultas a la base de datos están tardando mas de lo necesario o no. Ademas para que fuera mas eficiente decidimos añadir sys.statement_analysis ya que agrega automáticamente todas las queries ejecutadas con la media de las latencias, tiempo máximo y total de queries. Tras ello las ordeno por SUM_TIMER_WAIT para cuales son las consultas que acumulan mas tiempo.
--Buffer pool de InnoDB: esta esta enfocada a medir sobre todo el rendimiento de la cache ya que en caso de que la cache sea demasiado pequeña y no tenga los datos obliga a traerlos del disco constantemente, haciendo asi que se reduzca la eficiencia de la base de datos. Para tenerlo controlado utilizamos el calculo del hit_radio porque consideramos que la memoria funciona bien siempre que este por encima del 95%.
--Metricas de bloqueos: como riders es una plataforma de conductores hemos considerado que es de gran importancia controlar correctamente los bloqueos, ya que si dos conductores cogen al mismo cliente entonces significa que tuvimos un fallo nosotros. Por ello utilizamos Innodb_row_locks_waits para el tiempo medio de espera entre transacciones y Innodb_deadlocks que son las que son rechazadas, estas deben ser siempre 0. Si sube significa que están mal ordenadas y hay que matar una de ellas.
--Indices : Añadi un par de consultas de índices ya que en caso de que se detecte que un índice no se esta utilizando es mejor eliminarlo ya que no aporta nada, y en caso de que haya dos redundantes poder detectarlos para corregirlos.
+
+Este dashboard recoge métricas clave para comprobar que la base de datos está funcionando correctamente. Procederemos a listarlas y explicar porque son importantes:
+
+- Métricas de conexiones: las utilizamos para ver si llegamos al límite de conexiones simultaneas que podemos soportar antes de rechazar la conexión de clientes. Con `Threads_connected` observamos cuantas conexiones hay abiertas ahora mismo. A su vez con  `max_used_connections` observamos cual es el pico máximo de conexiones que hemos tenido simultáneamente que lo complementamos con `Connection:error_max_connection` para comprobar si hemos rechazado alguna conexión, siempre debe ser 0 porque sino significa que hemos rechazado conexiones.
+
+- Queries: estas están enfocadas en analizar si la base de datos se utiliza más en escritura o lectura. Ademas con `Slow_queries` podemos saber si las consultas a la base de datos están tardando mas de lo necesario o no. Adicionalmente para que fuera más eficiente decidimos añadir `performance_schema.events_statements_summary_by_digest` ya que agrega automáticamente todas las queries ejecutadas con la media de las latencias, tiempo máximo y total de queries. Tras ello las ordeno por `SUM_TIMER_WAIT` para cuales son las consultas que acumulan más tiempo.
+- Buffer pool de InnoDB: esta esta enfocada a medir sobre todo el rendimiento de la caché ya que en caso de que la caché sea demasiado pequeña y no tenga los datos obliga a traerlos del disco constantemente, haciendo así que se reduzca la eficiencia de la base de datos. Para tenerlo controlado utilizamos el calculo del `hit_ratio` porque consideramos que la memoria funciona bien siempre que esté por encima del 95%.
+- Métricas de bloqueos: como ridehailing es una plataforma de transporte hemos considerado que es de gran importancia controlar correctamente los bloqueos, ya que si dos conductores cogen al mismo cliente entonces significa que tuvimos un fallo nosotros. Por ello utilizamos `Innodb_row_locks_waits` para el tiempo medio de espera entre transacciones y `Innodb_deadlocks` que son las que son rechazadas, estas deben ser siempre 0. Si sube significa que están mal ordenadas y hay que matar una de ellas.
+- Indices : Hemos añadido un par de consultas de índices ya que en caso de que se detecte que un índice no se esta utilizando es mejor eliminarlo ya que no aporta nada, y en caso de que haya dos redundantes poder detectarlos para corregirlos.
 
 ### 2.Dashboard de métricas de negocio
-Este segundo dashboard esta pensado para mostrar estadísticas de la operativa de la base de datos. Por ejemplo la cantidad de viajes por hora, la distribución de los estados...
+Este segundo dashboard esta pensado para mostrar estadísticas de la operativa de la base de datos. Por ejemplo la cantidad de viajes por hora, la distribución de los estados, etc.
 Pasaremos a explicar los elegidos:
--Viajes por hora: agrupamos los viajes de la ultima semana por hora y días. Decidimos desarrollarlo a 7 días porque para una aplicación como ride-hailing tendría sentido que se quisiera motorizar semanalmente la cantidad de viajes y cuales son sus horas pico.
--Distribución de estados: para ver si los viajes pasan de estado solicitado a estado aceptado. Tiene sentido ya que en caso de que se detectara que hay muchos viajes en estado solicitado que no cambian significa que no hay conductores suficientes.
--Ofertas aceptadas/rechazadas/pendientes: sobre la oferta del conductor muestra el porcentaje de rechazos, aceptaciónes y pendientes sobre los pedidos. sirve para analizar si las condiciones del viaje a lo mejor no son buenas para el conductor y por ello lo rechazan o lo aceptan.
--Tasa de aceptación por conductor y company: sirve para ver la cantidad de ofertas que acepta un conductor y la cantidad de ofertas que acepta en conjunto una company.
--Ingreso por conductor y por company: 
--Metricas globales y top de conductores: mostramos las medias globales de precio y distancia y un ranking de los 10 conductores mas productivos.
+- Viajes por hora: agrupamos los viajes de la última semana por horas y días. Decidimos desarrollarlo a 7 días porque para una aplicación como ride-hailing tendría sentido que se quisiera motorizar semanalmente la cantidad de viajes y cuáles son sus horas pico.
+- Distribución de estados: para ver si los viajes pasan de estado solicitado a estado aceptado. Tiene sentido ya que en caso de que se detectara que hay muchos viajes en estado solicitado que no cambian significa que no hay conductores suficientes.
+- Ofertas aceptadas/rechazadas/pendientes: sobre la oferta del conductor muestra el porcentaje de rechazos, aceptaciónes y pendientes sobre los pedidos. Sirve para analizar si las condiciones del viaje a lo mejor no son buenas para el conductor y por ello lo rechazan o lo aceptan.
+- Tasa de aceptación por conductor y company: sirve para ver la cantidad de ofertas que acepta un conductor y la cantidad de ofertas que acepta en conjunto una company.
+- Métricas globales y top de conductores: mostramos las medias globales de precio y distancia y un ranking de los 10 conductores más productivos.
 
 
 ## BACKUP
 Para desarrollar el backup hay que tener en cuenta que estamos desarrollando una plataforma de ride-hailling que opera en tiempo real y tiene eventos con consecuencias económicas en caso de fallo, ya sea un pago, una oferta aceptada o un viaje que nunca pasa de en curso a finalizado.
-Con todo esto en mente el equipo decidio definir un RPO de 1 hora y un RTO de 4 horas. Significando que aceptamos el riesgo de perder 1 hora de datos de viajes y 4 horas de tiempo máximo para volver a estar con la plataforma operativa. 
+Con todo esto en mente el equipo decidió definir un RPO de 1 hora y un RTO de 4 horas. Significando que aceptamos el riesgo de perder 1 hora de datos de viajes y 4 horas de tiempo máximo para volver a estar con la plataforma operativa. 
 Decidimos que fuera un backup lógico ya que consideramos que como plataforma hecha para un trabajo de estudiantes no contamos con una cantidad muy grande de datos y asi podemos tener un archivo .sql portable para funcionar en cualquier momento, siendo legible y verificable y permitiendo que hagamos una restauración con un solo comando.
-Dentro del comando que utilizamos para la restauración cada linea tiene su porque:
+Dentro del comando que utilizamos para la restauración cada línea tiene su porque:
 --single-transaction sirve para realizar un snapshot coherente en el mismo instante en el que se ejecute sin bloquear ninguna tabla.
 --routines, --triggers, --events: sirve para asegurar que todo los procedimientos, eventos o triggers sean capturados y no se olviden.
 --set-gtid-purged=OFF : ya que sin esta opción el archivo .sql integra datos que pueden romper el restore.
