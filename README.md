@@ -54,8 +54,11 @@ type dashboard.sql | docker exec -i mysql mysql -uroot -prootpass
 Para acceder a grafana debemos:
 1. Acceder http://localhost:3000/
 2. Usuario: admin Contraseña: Admin
-3. Ir a dashboard e importar el 14057
-4. Ver metricas que recoge grafana gracias a mysql-exporter.
+3. Si es la primera conexion entonces ir a Add new connection
+4. Seleccionar Prometheus con conexion: http://prometheus:9090 y lo guardas
+5. Ir a dashboard e importar el 14057
+6. Despues de importar el 14057 aparece una opcion de UID que hay que cambiar por "prometheus"
+7. Tras eso lo importas y ya te aparecen las metricas de grafana
 
 Cabe aclarar que grafana lo que muestra son metricas del sistema recogidas automaticamente por el exporter, pero no van enlazadas con las de nuestro dashboard.sql que aunque hay metricas parecidas no todas son compartidas y el dashboard.sql debe ejecutarse tambien para tener en cuenta mas metricas del sistema y del negocio.
 
