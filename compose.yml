@@ -10,11 +10,11 @@ services:
       MYSQL_DATABASE: rideHailing
       MYSQL_USER: app
       MYSQL_PASSWORD: apppass
-    command: ["--default-authentication-plugin=mysql_native_password"]
+    command: [ "--default-authentication-plugin=mysql_native_password" ]
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-prootpass"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-prootpass" ]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -23,8 +23,9 @@ services:
     image: prom/mysqld-exporter
     container_name: mysqld-exporter
     restart: unless-stopped
-    environment:
-      DATA_SOURCE_NAME: "root:rootpass@(mysql:3306)/"
+    command:
+      - "--mysqld.username=root:rootpass"
+      - "--mysqld.address=mysql:3306"
     ports:
       - "9104:9104"
     depends_on:

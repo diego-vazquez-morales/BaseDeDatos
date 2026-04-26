@@ -60,15 +60,49 @@ docker exec -i mysql mysql -uroot -prootpass rideHailing < dashboard.sql
 
 #este funciona 
 type dashboard.sql | docker exec -i mysql mysql -uroot -prootpass
+
 ```
+Para acceder a grafana debemos:
+1. Acceder http://localhost:3000/
+2. Usuario: admin Contraseña: Admin
+3. Ir a dashboard e importar el 14057
+4. Ver metricas que recoge grafana gracias a mysql-exporter.
 
+Cabe aclarar que grafana lo que muestra son metricas del sistema recogidas automaticamente por el exporter, pero no van enlazadas con las de nuestro dashboard.sql que aunque hay metricas parecidas no todas son compartidas y el dashboard.sql debe ejecutarse tambien para tener en cuenta mas metricas del sistema y del negocio.
 
-### 6. Ejecutar a mano el backuo
+### 6. Ejecutar  el backup
 
 ```bash
-bash backup.sh
+bash backup.sh # para hacer backup unico a mano 
+
+0 * * * * cd "/ruta/BaseDeDatos" && bash backup.sh >> backup.log 2>&1   #para ejecutar un backup automatico en cada hora EN LINUX
+
+#Para ejecutar en windows podemos acceder a git bash y poner que se ejecute cada x tiempo que añamos definido nosotros:
+while true
+do
+    bash backup.sh
+    sleep 3600 #cantidad de segundos que tiene una hora
+done
+
 
 ```
+### 7.Restaurar el backup
+```bash
+docker exec -i mysql mysql -uroot -prootpass < backup_FECHA.sql
+
+```
+### 7.1 Restaurar backup con PITR (binlog)
+```bash
+docker exec -i mysql mysql -uroot -prootpass < backup_FECHA.sql
+
+docker exec mysql mysqlbinlog \
+--        --start-datetime="año-mes-dia hora:minuto:segundos" \ #hora de inicio
+--        --stop-datetime="año-mes-dia hora:minuto:segundos" \ #hora de fin
+--        /var/lib/mysql/binlog.000001 > cambios.sql
+
+docker exec -i mysql mysql -uroot -prootpass < cambios.sql
+```
+
 ## Conexión a la base de datos
 
 | Parámetro  | Valor        |
