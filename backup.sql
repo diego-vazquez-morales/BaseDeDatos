@@ -54,8 +54,7 @@ echo "Backups con más de ${RETENTION_DAYS} días eliminados"
 
 -- restauramos el archivo backup sql que necesitamos
 --
---   gunzip -c backup_rideHailing_Fecha.sql.gz  \ #poner nombre tu archivo
---     | docker exec -i mysql mysql -uroot -prootpass
+-- docker exec -i mysql mysql -uroot -prootpass < backup_FECHA.sql
 --
 
 
