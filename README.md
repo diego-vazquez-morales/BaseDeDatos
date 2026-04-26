@@ -27,9 +27,6 @@ docker compose ps
 ### 2. Cargar el esquema
 
 ```bash
-docker exec -i mysql mysql -uroot -prootpass rideHailing < schema.sql
-
-#este es el que funciona
 type schema.sql | docker exec -i mysql mysql -uroot -prootpass
 
 ```
@@ -37,9 +34,6 @@ type schema.sql | docker exec -i mysql mysql -uroot -prootpass
 ### 3. Cargar los datos de prueba
 
 ```bash
-docker exec -i mysql mysql -uroot -prootpass rideHailing < data.sql
-
-#este funciona 
 type data.sql | docker exec -i mysql mysql -uroot -prootpass
 
 ```
@@ -47,8 +41,6 @@ type data.sql | docker exec -i mysql mysql -uroot -prootpass
 ### 4. Aplicar permisos
 
 ```bash
-docker exec -i mysql mysql -uroot -prootpass rideHailing < permissions.sql
-#este funciona
 type permissions.sql | docker exec -i mysql mysql -uroot -prootpass
 
 ```
@@ -56,9 +48,6 @@ type permissions.sql | docker exec -i mysql mysql -uroot -prootpass
 ### 5. (Opcional) Cargar consultas del dashboard
 
 ```bash
-docker exec -i mysql mysql -uroot -prootpass rideHailing < dashboard.sql
-
-#este funciona 
 type dashboard.sql | docker exec -i mysql mysql -uroot -prootpass
 
 ```
