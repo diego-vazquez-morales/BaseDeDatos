@@ -2,7 +2,7 @@
 USE mysql;
 
 -- Primero eliminamos los usuarios y los roles que podrían existir para evitar errores al crear los nuevos usuarios
-DROP USER IF EXISTS 'app'@'%';
+DROP USER IF EXISTS 'ridehailing'@'%';
 DROP USER IF EXISTS 'dashboard'@'%';
 DROP USER IF EXISTS 'backup'@'localhost';
 DROP USER IF EXISTS 'admin'@'localhost';
@@ -10,15 +10,15 @@ DROP ROLE IF EXISTS 'rol_lectura', 'rol_escritura';
 
 /*+-----------------------------------------------------------------------------------------------------+*/
 -- Creamos los usuarios:
--- App (INSERT/UPDATE/SELECT datos) => Usuarios que utilizan nuestra apicación
+-- ridehailing (INSERT/UPDATE/SELECT datos) => Usuarios que utilizan nuestra apicación
 -- Dashboard (solo lectura) => Para herramientas de visualización de datos
 -- Backup local => Para el backup
 -- ADMIN => admin de la base de datos
 -- Todas las contraseñas van a estar hasheadas con SHA-256
 /*+-----------------------------------------------------------------------------------------------------+*/
 
--- Usuario app (puedes acceder desde donde quiera)
-CREATE USER 'app'@'%' IDENTIFIED WITH caching_sha2_password BY 'app1234_';
+-- Usuario ridehailing (puedes acceder desde donde quiera)
+CREATE USER 'ridehailing'@'%' IDENTIFIED WITH caching_sha2_password BY 'ridehailing1234_';
 
 -- Usuario Dashboard (puede acceder desde donde quiera)
 CREATE USER 'dashboard'@'%' IDENTIFIED  BY 'dashboard1234_';
@@ -29,18 +29,18 @@ CREATE USER 'backup'@'localhost' IDENTIFIED WITH caching_sha2_password BY 'backu
 -- Usuario ADMIN local (solo puede acceder localmente)
 CREATE USER 'admin'@'localhost' IDENTIFIED WITH caching_sha2_password BY 'dba1234_';
 
--- PERMISOS DE APP
+-- PERMISOS DE ridehailing
 /*+-----------------------------------------------------------------------------------------------------+*/
--- Permisos para app, selección, inserción y actualización en viaje, oferta y oferta_conductor. 
+-- Permisos para ridehailing, selección, inserción y actualización en viaje, oferta y oferta_conductor. 
 -- Selección e inserción en rider. Solo selección en conductor, vehiculo y company.
 /*+-----------------------------------------------------------------------------------------------------+*/
-GRANT SELECT, INSERT, UPDATE ON rideHailing.viaje TO 'app'@'%';
-GRANT SELECT, INSERT, UPDATE ON rideHailing.oferta TO 'app'@'%';
-GRANT SELECT, INSERT, UPDATE ON rideHailing.oferta_conductor TO 'app'@'%';
-GRANT SELECT, INSERT ON rideHailing.rider TO 'app'@'%';
-GRANT SELECT ON rideHailing.conductor TO 'app'@'%';
-GRANT SELECT ON rideHailing.vehiculo TO 'app'@'%';
-GRANT SELECT ON rideHailing.company TO 'app'@'%';
+GRANT SELECT, INSERT, UPDATE ON rideHailing.viaje TO 'ridehailing'@'%';
+GRANT SELECT, INSERT, UPDATE ON rideHailing.oferta TO 'ridehailing'@'%';
+GRANT SELECT, INSERT, UPDATE ON rideHailing.oferta_conductor TO 'ridehailing'@'%';
+GRANT SELECT, INSERT ON rideHailing.rider TO 'ridehailing'@'%';
+GRANT SELECT ON rideHailing.conductor TO 'ridehailing'@'%';
+GRANT SELECT ON rideHailing.vehiculo TO 'ridehailing'@'%';
+GRANT SELECT ON rideHailing.company TO 'ridehailing'@'%';
 
 /*+-----------------------------------------------------------------------------------------------------+*/
 -- PERMISOS DASBOARD
@@ -69,7 +69,7 @@ GRANT SELECT, LOCK TABLES, SHOW VIEW ON rideHailing.* TO 'backup'@'localhost';
 /*+-----------------------------------------------------------------------------------------------------+*/
 -- ROLES
 -- Rol Lectura  => Permite consultar datos sin poder modificarlos. Asignado a usuarios como dashboard.
--- Rol Escritura => Permite insertar, actualizar y eliminar datos. Asignado a usuarios como app.
+-- Rol Escritura => Permite insertar, actualizar y eliminar datos. Asignado a usuarios como ridehailing.
 /*+-----------------------------------------------------------------------------------------------------+*/
 CREATE ROLE 'rol_lectura', 'rol_escritura';
 
@@ -81,11 +81,11 @@ GRANT INSERT, UPDATE ON rideHailing.viaje  TO 'rol_escritura';
 
 -- Asignamos los roles a los usuarios correspondientes segun su función
 GRANT 'rol_lectura'  TO 'dashboard'@'%';
-GRANT 'rol_escritura' TO 'app'@'%';
+GRANT 'rol_escritura' TO 'ridehailing'@'%';
 
 -- Por defecto MySQL no activa los roles al conectarse, 
 -- asi que los activamos automáticamente sin necesidad de hacer SET ROLE manualmente.
-SET DEFAULT ROLE ALL TO 'app'@'%';
+SET DEFAULT ROLE ALL TO 'ridehailing'@'%';
 SET DEFAULT ROLE ALL TO 'dashboard'@'%';
 
 -- Recargamos los privilegios en memoria para que todos los cambios tengan efecto inmediato
@@ -116,7 +116,7 @@ ALTER USER 'backup'@'localhost' ACCOUNT UNLOCK;
  
 
 -- Forzamos el cambio de contraseña en el próximo login
-ALTER USER 'app'@'%' PASSWORD EXPIRE;
+ALTER USER 'ridehailing'@'%' PASSWORD EXPIRE;
 
 /*+-----------------------------------------------------------------------------------------------------+*/
 -- AUDITORÍA Y SUPERVISIÓN
@@ -126,11 +126,11 @@ ALTER USER 'app'@'%' PASSWORD EXPIRE;
 -- Ver todas las cuentas y su estado (bloqueadas, contraseña expirada, plugin)
 SELECT user, host, plugin, account_locked, password_expired
 FROM mysql.user
-WHERE user IN ('app', 'dashboard', 'backup', 'admin')
+WHERE user IN ('ridehailing', 'dashboard', 'backup', 'admin')
 ORDER BY user, host;
  
 -- Mostramos los permisos concretos de cada usuario
-SHOW GRANTS FOR 'app'@'%';
+SHOW GRANTS FOR 'ridehailing'@'%';
 SHOW GRANTS FOR 'dashboard'@'%';
 SHOW GRANTS FOR 'backup'@'localhost';
 SHOW GRANTS FOR 'admin'@'localhost';
