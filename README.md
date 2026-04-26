@@ -83,14 +83,7 @@ done
 docker exec -i mysql mysql -uroot -prootpass < backup_FECHA.sql
 
 ```
-### 7.1 Restaurar backup con PITR (binlog)
-```bash
-docker exec -i mysql mysql -uroot -prootpass < backup_FECHA.sql
 
-docker exec mysql /usr/bin/mysqlbinlog --start-datetime="año-mes-dia hora:minutos:segundos" --stop-datetime="año-mes-dia hora:minutos:segundos" //var/lib/mysql/binlog.000001 > cambios.sql
-
-docker exec -i mysql mysql -uroot -prootpass < cambios.sql
-```
 
 ## Conexión a la base de datos
 
@@ -143,18 +136,6 @@ docker exec -it mysql mysql -uapp -papppass rideHailing \
   -e "SELECT * FROM trips WHERE status = 'solicitado';"
 ```
 
-
-## Backup y recuperación
-
-Ver `backup.sql` para el plan completo. Resumen rápido:
-
-```bash
-# Crear backup
-docker exec mysql mysqldump -uroot -prootpass rideHailing > backup_$(date +%F).sql
-
-# Restaurar backup
-docker exec -i mysql mysql -uroot -prootpass rideHailing < backup_YYYY-MM-DD.sql
-```
 
 
 ## Parar y limpiar

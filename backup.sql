@@ -6,19 +6,13 @@
 -- y en caso de que fallara el sistema perder datos como los pagos, si un conductor acepto una oferta, o el cambio de un estado de un viaje
 --de en curso a finalizado puede ser critico tanto para la empresa como para los usuarios.
 --Entonces teniendo todo eso encuenta podemos defineir el RPO y el RTO
---Definimos el RPO =  hora --> que es la maxima 1 hora de perdida de datos  y un RTO de = 4 horas donde el sistema pueda restaurarse.
---Pero apuntamos a crear un sistema hibrido con backup completo + binlog + replicas para hacerlo de la forma mas segura.
+--Definimos el RPO =  hora --> que es la maxima 1 hora de perdida de datos  y un RTO de = 4 horas donde el sistema pueda restaurarse. 
+--En caso de que la perdida para la aplicacion fuera muy grande en esa hora podriamos hacer backups automaticos cada menos tiempo como cada 10 mins 
+-- o integrar binlog al modelo cosa que no hemos echo por fallos que nos daba a la hora de ejecutarlo.
 
 --Al final del .sql vienen los pasos para ejecutar los backups
 
---Verificar que el Binlog esta activo  para PITR (recuperar en el momento exacto)
-SHOW VARIABLES LIKE 'log_bin';                       -- Debe ser ON
-SHOW VARIABLES LIKE 'binlog_format';                 -- Recomendado: ROW
-SHOW VARIABLES LIKE 'binlog_expire_logs_seconds';    -- Retención en segundos
-
--- Ver los archivos de binlog disponibles actualmente
-SHOW BINARY LOGS;
-
+--
 
 --Con la poca cantidad de datos que manejamos vamos a optar por un backup logico 
 --antes que por uno fisico ya que asi es mas tiene una mayor portabiliad y es mas senciullo
@@ -32,25 +26,27 @@ SHOW BINARY LOGS;
 --BACKUP_DIR="."
 --RETENTION_DAYS=5
 
---mkdir -p "${BACKUP_DIR}"
+
 # creamos backup comprimido para que no ocupe tanto
---docker exec mysql mysqldump \
+---docker exec mysql mysqldump \
 --  -uroot -prootpass \
   --databases rideHailing \
   --single-transaction \
   --routines --triggers --events \
---  -set-gtid-purged=OFF \
---  | gzip > "${BACKUP_DIR}/backup_${FECHA}.sql.gz"
+  --set-gtid-purged=OFF \
+--  > "${BACKUP_DIR}/backup_${FECHA}.sql"
+
   # comprobar si se creo correctamente
 --if [ $? -eq 0 ]; then
---    echo "Backup creado: backup_${FECHA}.sql.gz"
+--    echo "Backup creado: backup_${FECHA}.sql"
 --else
 --    echo "ERROR: Backup falló" >&2
 --    exit 1
 --fi
 #eliminamos los backups con mas de 5 dias
---find ${BACKUP_DIR} -name "backup_*.sql.gz" -mtime +${RETENTION_DAYS} -delete
---echo "Backups con más de ${RETENTION_DAYS} días eliminados"
+--find ${BACKUP_DIR} -name "backup_*.sql" -mtime +${RETENTION_DAYS} -delete
+-- echo "Backups con más de ${RETENTION_DAYS} días eliminados"
+
 
 --
 --  Para que el backup se ejecute cada hora (linux)
@@ -63,28 +59,8 @@ SHOW BINARY LOGS;
 
 -- restauramos el archivo backup sql que necesitamos
 --
---   gunzip -c backup_rideHailing_Fecha.sql.gz  \ #poner nombre tu archivo
---     | docker exec -i mysql mysql -uroot -prootpass
---
+--   docker exec -i mysql mysql -uroot -prootpass < backup_FECHA.sql
 
-
---  Uso de PITR 
---
---Pitr nos permite recuperar la bd haste el momento exacto graciasn a binlog
-
--- PASOS (ejecutar en terminal):
---
---   1. Restaurar el ultimo backup
---     docker exec -i mysql mysql -uroot -prootpass < backup_FECHA.sql
---
---   2. Extraer del binlog solo los cambios hasta a hora necesaria
---      docker exec mysql mysqlbinlog \
---        --start-datetime="año-mes-dia hora:minuto:segundos" \ #hora de inicio
---        --stop-datetime="año-mes-dia hora:minuto:segundos" \ #hora de fin
---        /var/lib/mysql/binlog.000001 > cambios.sql
---
---   3. Aplicar esos cambios sobre la BD restaurada
---      docker exec -i mysql mysql -uroot -prootpass < cambios.sql
 
 
 
@@ -152,14 +128,6 @@ SHOW GRANTS FOR 'backup'@'localhost';
 --1. docker compose ps
 --2. Restaura el ultimo backup:
 --   docker exec -i mysql mysql -uroot -prootpass < backup_FECHA.sql
-
---3. Extraer del binlog solo los cambios hasta a hora necesaria
---      docker exec mysql mysqlbinlog \
---        --start-datetime="año-mes-dia hora:minuto:segundos" \ #hora de inicio
---        --stop-datetime="año-mes-dia hora:minuto:segundos" \ #hora de fin
---        /var/lib/mysql/binlog.000001 > cambios.sql
---4. Aplicar esos cambios sobre la BD restaurada
---      docker exec -i mysql mysql -uroot -prootpass < cambios.sql
---5. hacer pruebas tras restore
+--3. hacer pruebas tras restore
 
 
