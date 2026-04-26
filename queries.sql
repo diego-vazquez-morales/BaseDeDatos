@@ -3,7 +3,7 @@
 USE rideHailing;
 
 /*+-----------------------------------------------------------------------------------------------------+*/
--- 1) TRIGGER: solo un conductor puede aceptar una oferta
+-- TRIGGER: solo un conductor puede aceptar una oferta
 -- Este trigger se ejecuta antes de cada UPDATE en oferta_conductor.
 -- Si alguien intenta poner decision='aceptada', valida que no exista ya
 -- otro conductor con decision='aceptada' para la misma oferta.
@@ -37,12 +37,14 @@ DELIMITER ;
 SHOW TRIGGERS FROM rideHailing;
 
 /*+-----------------------------------------------------------------------------------------------------+*/
--- 2) ALTA DE RIDER (tabla usuario + tabla rider)
+-- ALTA DE NUEVO RIDER (usuario + rider)
 -- Primero insertamos en usuario (datos comunes), luego en rider (rol especifico).
 -- Eliminamos previamente el usuario demo para que el script sea re-ejecutable
 -- sin errores por duplicado de email o telefono.
 /*+-----------------------------------------------------------------------------------------------------+*/
 
+-- Lo eliminamos en caso que exista cuando eliminas el usuario por el cascade 
+-- se elimina automaticamente de la tabla rider
 DELETE FROM usuario
 WHERE email = 'rider.demo@email.com';
 
@@ -64,6 +66,7 @@ SET @id_rider_demo := LAST_INSERT_ID();
 
 COMMIT;
 
+-- Mostramos el nuevo usuario creado
 SELECT r.id_rider, u.id_usuario, u.nombre, u.email, u.estado
 FROM rider r
 JOIN usuario u ON u.id_usuario = r.id_usuario
@@ -78,6 +81,7 @@ WHERE r.id_rider = @id_rider_demo;
 -- Usamos la tarifa 1 para el ejemplo de demo
 SET @id_tarifa_demo := 1;
 
+-- Insertamos un nuevo viaje
 INSERT INTO viaje (
     id_rider,
     id_tarifa,
@@ -117,9 +121,10 @@ WHERE u.estado = 'activo';
 SELECT * FROM oferta_conductor WHERE id_oferta = @id_oferta_demo ORDER BY id_conductor;
 
 /*+-----------------------------------------------------------------------------------------------------+*/
--- 4) ACEPTACION CORRECTA DE OFERTA (TRANSACCIONAL)
+-- ACEPTACION CORRECTA DE OFERTA 
 -- Se bloquea la fila con FOR UPDATE para evitar condiciones de carrera.
--- Un conductor acepta; el viaje pasa a aceptado; el resto se marca rechazada.
+-- Un conductor acepta el viaje el estado del viaje pasa a aceptado y luego se pone en rechazado para el
+-- resto de conductores
 -- Se registra el evento en evento_viaje para auditoria.
 /*+-----------------------------------------------------------------------------------------------------+*/
 
@@ -133,7 +138,7 @@ SET @id_conductor_1 := (
 
 START TRANSACTION;
 
--- Bloqueo pesimista de la fila que va a aceptar
+-- Bloqueo de la fila que va a aceptar
 SELECT id_oferta, id_conductor, decision
 FROM oferta_conductor
 WHERE id_oferta = @id_oferta_demo
@@ -179,9 +184,8 @@ VALUES (@id_viaje_demo, @id_rider_demo, @id_conductor_1, 'aceptacion', 'solicita
 COMMIT;
 
 /*+-----------------------------------------------------------------------------------------------------+*/
--- 5) PRUEBA DEL TRIGGER: SEGUNDO CONDUCTOR INTENTA ACEPTAR LA MISMA OFERTA
--- Ejecuta este bloque al final (de forma aislada) para ver el error SQLSTATE 45000.
--- Si descomentas el UPDATE, debe fallar porque ya hay un aceptado para la oferta.
+-- PRUEBA DEL TRIGGER
+-- Un segundo conductor intenta aceptar la oferta
 /*+-----------------------------------------------------------------------------------------------------+*/
 
 SET @id_conductor_2 := (
@@ -198,11 +202,11 @@ WHERE id_oferta = @id_oferta_demo
 AND id_conductor = @id_conductor_2;
 
 /*+-----------------------------------------------------------------------------------------------------+*/
--- 6) CONSULTAS DE VERIFICACION
--- Consultas de control para demostrar consistencia funcional ante el profesor.
+-- CONSULTAS
+-- Estas consultas se hacen para comprobar que todos los pasos anteriores se han realizado correctamente
 /*+-----------------------------------------------------------------------------------------------------+*/
 
--- Debe haber exactamente 1 conductor con decision='aceptada' para @id_oferta_demo
+-- Mostramos que solo hay 1 conductor con el estado de aceptado para @id_oferta_demo
 SELECT id_oferta, decision, COUNT(*) AS total
 FROM oferta_conductor
 WHERE id_oferta = @id_oferta_demo
@@ -214,30 +218,15 @@ SELECT v.id_viaje, v.estado, v.id_conductor_aceptado, v.id_rider, v.id_tarifa, v
 FROM viaje v
 WHERE v.id_viaje = @id_viaje_demo;
 
--- Auditoria del viaje de demo (trazabilidad del proceso)
+-- Auditoria del viaje de demo
 SELECT e.id_evento, e.tipo_evento, e.estado_anterior, e.estado_nuevo, e.id_conductor, e.creado_en
 FROM evento_viaje e
 WHERE e.id_viaje = @id_viaje_demo
 ORDER BY e.id_evento;
 
-/*+-----------------------------------------------------------------------------------------------------+*/
--- 7) GESTION DE CONDUCTORES (borrado logico)
--- No se borra el conductor fisicamente: se marca estado='inactivo' en usuario.
-/*+-----------------------------------------------------------------------------------------------------+*/
-
-UPDATE usuario
-SET estado = 'inactivo'
-WHERE id_usuario = (SELECT id_usuario FROM conductor WHERE id_conductor = 3);
-
--- Consulta de verificacion del borrado logico
-SELECT c.id_conductor, u.nombre, u.email, u.estado, c.creado_en
-FROM conductor c
-JOIN usuario u ON u.id_usuario = c.id_usuario
-WHERE u.estado = 'inactivo'
-ORDER BY c.id_conductor;
 
 /*+-----------------------------------------------------------------------------------------------------+*/
--- 8) HISTORIAL Y REPORTES
+-- HISTORIAL Y REPORTES
 -- Consultas de explotacion para mostrar que el modelo soporta seguimiento operativo.
 /*+-----------------------------------------------------------------------------------------------------+*/
 
