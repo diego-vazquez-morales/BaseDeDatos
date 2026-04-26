@@ -25,39 +25,41 @@ SHOW BINARY LOGS;
 -
 --  AUTOMATIZACION DE LOS BACKUPS
 --  Dejamos automatizados los backups para que se realicen cada hora y eliminen los backups que tengan mas de 5 dias
+--Todo lo que viene aqui es lo que esta dentro del backup.sh
+#!/bin/bash
+# backup_ridehailing.sh
+--FECHA=$(date +%Y%m%d_%H%M%S)
+--BACKUP_DIR="."
+--RETENTION_DAYS=5
 
--- #!/bin/bash
--- # backup_ridehailing.sh
+--mkdir -p "${BACKUP_DIR}"
+# creamos backup comprimido para que no ocupe tanto
+--docker exec mysql mysqldump \
+--  -uroot -prootpass \
+  --databases rideHailing \
+  --single-transaction \
+  --routines --triggers --events \
+--  -set-gtid-purged=OFF \
+--  | gzip > "${BACKUP_DIR}/backup_${FECHA}.sql.gz"
+  # comprobar si se creo correctamente
+--if [ $? -eq 0 ]; then
+--    echo "Backup creado: backup_${FECHA}.sql.gz"
+--else
+--    echo "ERROR: Backup falló" >&2
+--    exit 1
+--fi
+#eliminamos los backups con mas de 5 dias
+--find ${BACKUP_DIR} -name "backup_*.sql.gz" -mtime +${RETENTION_DAYS} -delete
+--echo "Backups con más de ${RETENTION_DAYS} días eliminados"
+
 --
--- FECHA=$(date +%Y%m%d_%H%M%S)
--- BACKUP_DIR="/backups/mysql"
--- RETENTION_DAYS=5
---
--- # creamos backup comprimido para que no ocupe tanto
--- docker exec mysql mysqldump \
---   -uroot -prootpass \
---   --databases rideHailing \
---   --single-transaction \
---   --routines --triggers --events \
---   --set-gtid-purged=OFF \
---   | gzip > "${BACKUP_DIR}/backup_${FECHA}.sql.gz"
---
--- # comprobar si se creo correctamente
--- if [ $? -eq 0 ]; then
---   echo "Backup creado: backup_${FECHA}.sql.gz"
--- else
---   echo "ERROR: Backup falló" >&2
---   exit 1
--- fi
---
---  #eliminamos los backups con mas de 5 dias
--- find ${BACKUP_DIR} -name "backup_*.sql.gz" -mtime +${RETENTION_DAYS} -delete
--- echo "Backups con más de ${RETENTION_DAYS} días eliminados"
---
---  # Para que el backup se ejecute cada hora.
+--  Para que el backup se ejecute cada hora (linux)
 --   0 * * * * /scripts/backup_ridehailing.sh >> /var/log/mysql_backup.log 2>&1
-
-
+--  Para que el backup se ejecute cada hora  (windows) desde git bash
+--while true; do
+--    bash backup.sh
+--    sleep 3600
+--done
 
 -- restauramos el archivo backup sql que necesitamos
 --
@@ -73,8 +75,7 @@ SHOW BINARY LOGS;
 -- PASOS (ejecutar en terminal):
 --
 --   1. Restaurar el ultimo backup
---     gunzip -c backup_rideHailing_Fecha.sql.gz  \ #poner nombre tu archivo
---        | docker exec -i mysql mysql -uroot -prootpass
+--     docker exec -i mysql mysql -uroot -prootpass < backup_FECHA.sql
 --
 --   2. Extraer del binlog solo los cambios hasta a hora necesaria
 --      docker exec mysql mysqlbinlog \
@@ -83,7 +84,7 @@ SHOW BINARY LOGS;
 --        /var/lib/mysql/binlog.000001 > cambios.sql
 --
 --   3. Aplicar esos cambios sobre la BD restaurada
---      cat cambios.sql | docker exec -i mysql mysql -uroot -prootpass
+--      docker exec -i mysql mysql -uroot -prootpass < cambios.sql
 
 
 
@@ -136,48 +137,29 @@ SHOW GRANTS FOR 'backup'@'localhost';
 --Pasos para ejecutar el codigo de backup automatico
 --1. docker compose up -d
 --2. docker compose ps
---3. ejecutar: La automatizacion del backup
-#!/bin/bash
- # backup_ridehailing.sh
-FECHA=$(date +%Y%m%d_%H%M%S)
-BACKUP_DIR="/backups/mysql"
-RETENTION_DAYS=5
+--3.1 ejecutar en git bash (para windows ):
+--while true
+--do
+--    bash backup.sh
+--    sleep 10
+--done
+--3.2 ejecutar en terminal (para Linux):
+-- 0 * * * * cd "/ruta/BaseDeDatos" && bash backup.sh >> backup.log 2>&1
 
-mkdir -p "${BACKUP_DIR}"
-# creamos backup comprimido para que no ocupe tanto
-docker exec mysql mysqldump \
-  -uroot -prootpass \
-  --databases rideHailing \
-  --single-transaction \
-  --routines --triggers --events \
-  -set-gtid-purged=OFF \
-  | gzip > "${BACKUP_DIR}/backup_${FECHA}.sql.gz"
-  # comprobar si se creo correctamente
-if [ $? -eq 0 ]; then
-  echo "Backup creado: backup_${FECHA}.sql.gz"
-else
-  echo "ERROR: Backup falló" >&2
-  exit 1
-fi
-  #eliminamos los backups con mas de 5 dias
-find ${BACKUP_DIR} -name "backup_*.sql.gz" -mtime +${RETENTION_DAYS} -delete
-echo "Backups con más de ${RETENTION_DAYS} días eliminados"
-  # Para que el backup se ejecute cada hora.
--- 0 * * * * /scripts/backup_ridehailing.sh >> /var/log/mysql_backup.log 2>&1
---4. Verificar que se creo ls -lh backup_rideHailing_*.sql.gz
+--4. Verificar que se creo ls -lh backup_rideHailing_*.sql con el horario exacto
 
 --Pasos de restauracion
 --1. docker compose ps
 --2. Restaura el ultimo backup:
---   gunzip -c backup_rideHailing_Fecha.sql.gz \ #poner nombre tu archivo cque esta en .gz
---        | docker exec -i mysql mysql -uroot -prootpass
+--   docker exec -i mysql mysql -uroot -prootpass < backup_FECHA.sql
+
 --3. Extraer del binlog solo los cambios hasta a hora necesaria
 --      docker exec mysql mysqlbinlog \
 --        --start-datetime="año-mes-dia hora:minuto:segundos" \ #hora de inicio
 --        --stop-datetime="año-mes-dia hora:minuto:segundos" \ #hora de fin
 --        /var/lib/mysql/binlog.000001 > cambios.sql
 --4. Aplicar esos cambios sobre la BD restaurada
---      cat cambios.sql | docker exec -i mysql mysql -uroot -prootpass
+--      docker exec -i mysql mysql -uroot -prootpass < cambios.sql
 --5. hacer pruebas tras restore
 
 
