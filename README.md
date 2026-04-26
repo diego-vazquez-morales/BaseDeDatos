@@ -53,7 +53,7 @@ type dashboard.sql | docker exec -i mysql mysql -uroot -prootpass
 ```
 Para acceder a grafana debemos:
 1. Acceder http://localhost:3000/
-2. Usuario: admin Contraseña: Admin
+2. Usuario: admin Contraseña: admin
 3. Si es la primera conexion entonces ir a Add new connection
 4. Seleccionar Prometheus con conexion: http://prometheus:9090 y lo guardas
 5. Ir a dashboard e importar el 14057
