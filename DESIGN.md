@@ -16,20 +16,29 @@ erDiagram
         timestamp creado_en
     }
 
-    RIDER {
-        bigint id_rider PK
+    USUARIO {
+        bigint id_usuario PK
         varchar nombre
         varchar email UK
-        decimal valoracion_media
+        varchar telefono UK
+        varchar password
+        decimal rating
+        enum estado
+        timestamp creado_en
+    }
+
+    RIDER {
+        bigint id_rider PK
+        bigint id_usuario FK
+        enum metodo_pago
         timestamp creado_en
     }
 
     CONDUCTOR {
         bigint id_conductor PK
-        varchar nombre
-        varchar email UK
+        bigint id_usuario FK
         bigint id_company FK
-        boolean activo
+        varchar licensia UK
         decimal valoracion_media
         timestamp creado_en
     }
@@ -127,78 +136,78 @@ erDiagram
     VIAJE }o--|| TARIFA : "aplica"
     OFERTA ||--o{ OFERTA_CONDUCTOR : "enviada a"
     VEHICULO ||--o{ EMPRESA_VEHICULO : "asignado a"
+    USUARIO ||--|| RIDER : "es"
+    USUARIO ||--|| CONDUCTOR : "es"
 ```
 
 ---
 
 ## Que tablas hemos usado y porque
 
-### 1. RIDER
+### 1. USUARIO
 
-Esta es una de las tablas principales ya que en el enunciado indica explicitamente que el rider es la persona que va ser llevada de un punto A a un punto B que tiene una relación de `es(1:1)` directa con usuario ya que en esta plataforma tenenemos 2 tipos de usuarios, tambien se ha hecho para mantener los roles especificos de cada usuario separados, como `metodoPago` que es el que decidirá el usuario y `ultimoViaje` que va a guardar como su propio nombre indica el ultimo viaje realizado con el usuario.
+Esta tabla la hemos creado por que en la plataforma hay dos tipos de usuarios, el rider y el conductor. Ambos comparten varios campos en comun como **nombre, email, telefono y contraseña**. En lugar de repetir estos campos en dos tablas diferentes, hemos implementado **USUARIO**. Tanto Rider como Conductor tienen una relacion `es(1:1)` con Usuario, heredando los campos comunes. Tambien hemos implementado el campo `estado` para poder bloquear o desactivar una cuenta sin borrarla de la base de datos. El campo `rating` representa la puntuación general del usuario.
 
-Rider tiene una relación `solicita(1:n)` con `viaje` ya que un **rider** puede realizar múltiples viajes a lo largo del tiempo, guardando en `viaje` el id del rider como clave foranea.
+### 2. RIDER
+
+Esta es una de las tablas principales del sistema, representa a la persona o cliente que solicita un viaje de un punto A a un punto B. Hereda los datos de `Usuario` a traves de `id_usuario` y añade el campo `metodo_pago` que es especifico del Rider quien es el que paga un viaje.
+
+Rider tiene una relación `solicita(1:n)` con `viaje` ya que un **rider** puede realizar múltiples viajes a lo largo del tiempo, guardando en `viaje` el id del rider como clave foránea.
 
 ---
 
-### 2. CONDUCTOR
+### 3. CONDUCTOR
 
-Esta tabla ha sido creada porque va ser la entidad encargada de aceptar la oferta y llevar al rider, al igual que rider esta mantiene tambien una relación `es(1:1)` con usuario ya que es el otro tipo de usuario.
+Esta tabla representa al conductor que acepta las ofertas de viajes y lleva al rider a su destino. Al igual que la tabla Rider, esta hereda los datos personales de `Usuario` a través de id_usuario. Añade campos especificos como la licencia de conducir y la valoracion_media que se actualiza cada vez que un rider puntúa un viaje.
 
 Conductor tiene 4 relaciones más:
 
-- La principal como es el encargado de aceptar las ofertas que genera el sistema cuando un usuario solicita un viaje este tiene una relación `recibe(n:n)` con oferta ya que una oferta puede ser lanzada a muchos conductores.
-- Como los conductores tiene que transportar a los riders con algún vehículo existe una relación con vehiculo la cual es `conduce(1:1)` donde solo un coche puede ser conducido por un conductor.
-- Como queremos guardar en los registros que conductor ha realizado que viaje tenemos una relación `realiza(1:n)` donde guardamos en viaje el id del conductor que previamente ha aceptado la oferta.
-- Como todos los conductores pertenencen a una company existe una relación con company.
-
----
-
-### 3. USUARIO
-
-Esta tabla ha sido creada para facilitar el proceso de creación de multiples usuarios, ya que hay muchos datos comunes entre ambos usuarios que se guardan en esta tabla luego los usuarios heredan de esta tabla esos atributos mediante una relación `es(1:1)`.
+- Tiene una relación `recibe(N:N)` con Oferta ya que una oferta puede ser enviada a muchos conductores y un conductor puede recibir muchas ofertas.
+- Tiene una relación `conduce(1:N)` con vehículo ya que un conductor puede tener varios vehiculos asignados a lo largo del tiempo.
+- Tiene una relacion con Viaje en donde guardamos el id del conductor que aceptó la oferta en el campo `id_conductor_aceptado`.
+- Pertenece a una Company y guarda el `id_company` como clave foránea.
 
 ---
 
 ### 4. COMPANY
 
-El motivo de creación de esta tabla es que todo los conductores deben pertenecer a una company, en company guardaremos datos como el nombre de la compañia, el cif y el país de origen de la compañia, hemos añadido otra relación, ya que normalemente todos los vehiculos de empresas que se dedican a llevar a personas los vehiculos que usan los conductores suelen ser de estas compañias, esta es `1:n` porque una compañia puede tener multiples vehículos.
+Esta tabla respresenta las empresas. Existe por que todos los conductores tienen que pertenecer a una empresa. En esta guardamos el nombre, CIF, y país de origen de la compañía. Tiene una relación con Vehículo por que en este tipo de plataformas los coches suelen ser propiedad de las empresas, no de los conductores, esto esta representado en la tabla intermedia `empresa_vehiculo`.  
 
 ---
 
 ### 5. VEHÍCULO
 
-Al existir la entidad conductor estos deben tener algun vehículo donde llevar a los riders que solcitan el viaje, luego la relación que existe entre conductor y vehiculo es `1:1` ya que solo un coche puede ser concucido al mismo tiempo por un conductor y luego tambien esta relacionado con company por que el coche peternece a la compañia y no al conductor.
+Los conductores necesitan un vehículo para transportar a los riders. La relación entre conductor y vehículo es `(1:N)` ya que un conductor puede tener varios vehículos asignados a lo largo del tiempo. Adicionalmente está relacionado con `Company` a través de `empresa_vehiculo` porque el vehículo pertenece a la empresa.
 
 ---
 
 ### 6. TARIFA
 
-Esta tabla ha sido creada con el motivo de tener los precios aislados del resto del sistema. Cada company define su propia tarifa con tres componentes: un precio_base fijo al inicio de cada viaje, un coste por kilometro y un coste por minuto. La relación con company es 1:N ya que un company puede tener multiples tarifas a lo largo del tiempo debido al campo vigente_desde. Esto permite tener un historial de los precios y los cambios que se hagan a lo largo del tiempo sin afevttar viajes que ya se hayan realizados. Cada viaje referencia la tarifa que esta vigente en el momento de su creacion. 
+Esta tabla ha sido creada con el motivo de tener los precios separados del resto del sistema. Cada **Company** define su propia tarifa con tres componentes: un `precio_base` fijo al inicio de cada viaje, un coste por kilómetro y un coste por minuto. La relación con **Company** es `(1:N)` ya que un **Company** puede tener múltiples tarifas a lo largo del tiempo debido al campo `vigente_desde`. Esto permite tener un historial de los precios y los cambios que se hagan a lo largo del tiempo sin afectar viajes que ya se hayan realizados. Cada viaje referencia la tarifa que esta vigente en el momento de su creación. 
 
 ---
 
 ### 7. VIAJE
 
-`viaje` es la entidad central del sistema, representa el trayecto solicitado por un rider de un punto A a un punto B. La hemos creado para registrar toda la información del trayecto: coordenadas, estado, duración, distancia y precio final, siendo el nexo entre el rider, el conductor y la tarifa aplicada.
+`Viaje` es la entidad central del sistema, representa el trayecto solicitado por un rider de un punto A a un punto B. La hemos creado para registrar toda la información del trayecto: coordenadas, estado, duración, distancia y precio final, siendo el nexo entre el rider, el conductor y la tarifa aplicada.
 
 ---
 
 ### 8. OFERTA
 
-Los viajes generan ofertas que son lanzadas a todos los conductores y estas solo pueden ser aceptadas por un conductor, en oferta guardamos información como el estado, el id del viaje que ha creado las ofertas, la hora que ha sido creada, el estado si ha sido aceptada o no.
+Cuando un rider solicita un viaje el sistema genera una oferta que se envía a todos los conductores activos. En esta tabla guardamos el estado de esa oferta y el viaje al que pertenece. La relación con **Viaje** es `(1:1)` ya que cada viaje genera exactamente una oferta.
 
 ---
 
 ### 9. OFERTA_CONDUCTOR
 
-Esta es la tabla intermedia que resulta de la relacion N:N entre oferta y conductor. Cuando un rider solicita un viaje, el sistema crea una oferta y la envia a todos los conductores que esten activos, insertando una fila en esa tabla por cada condcutor con el campo decision=pendiente. El primer conductor que acepta la oferta, inicia una transaccion que actualiza su fila en el campo de decision a decision = aceptada, se rechaza automaticamente al resto. Para poder garantizar que nunca haya dos conductores con el campo decision = aceptada para una misma oferta, hemos implementado un trigger BEFORE UPDATE, este lanza un error si se intenta aceptar una oferta que ya ha sifo aceptada previamente. 
+Esta es la tabla intermedia que resulta de la relación `(N:N)` entre oferta y conductor. Cuando un rider solicita un viaje, el sistema crea una oferta y la envia a todos los conductores que esten activos, insertando una fila en esa tabla por cada condcutor con el campo `decision = 'pendiente'`. El primer conductor que acepta la oferta, inicia una transacción que actualiza su fila en el campo de `decision` a `decision = 'aceptada'`, se rechaza automáticamente al resto. Para poder garantizar que nunca haya dos conductores con el campo `decision = 'aceptada'` para una misma oferta, hemos implementado un trigger BEFORE UPDATE, este lanza un error si se intenta aceptar una oferta que ya ha sido aceptada previamente. 
 
 ---
 
 ### 10. VALORACION
 
-Esta tabla recoge la puntuacion que un rider le da a un conductor tras finalizar un viaje. La relacion con viaje tiene un UNIQUE KEY sobre id_viaje garantizando que solo puede existir una valoracion por viaje. La puntuacion esta entre un rango entre 1 y 5 mediante un CHECK constraint. Tras cada insercion de valoracion, se actualiza el campo de valoracion_media del cconductor correspondiente. La tabla tambien indexa id_conductor e id_rider para acelerar las consultas de metricas de rendimiento por conductor y por company.
+Esta tabla recoge la puntuacion que un rider le da a un conductor tras finalizar un viaje. La relacion con viaje tiene un `UNIQUE KEY` sobre `id_viaje` garantizando que sólo puede existir una valoración por viaje. La puntuación está entre un rango entre 1 y 5 mediante un `CHECK constraint`. Tras cada inserción de valoración, se actualiza el campo de `valoracion_media` del cconductor correspondiente. La tabla también indexa `id_conductor` e `id_rider` para acelerar las consultas de métricas de rendimiento por **Conductor** y por **Company**.
 
 ---
 
@@ -211,3 +220,20 @@ Esta tabla resulta de la relacion N:N entre company y vehiculo. Un vehiculo pued
 ## Historial y auditoría
 
 Para cubrir el requisito de historial y auditoría básica de operaciones hemos creado la tabla `evento_viaje`, que actúa como un log inmutable de todos los cambios de estado de cada viaje. Cada vez que un viaje transiciona de estado se inserta una fila nueva con el estado anterior, el estado nuevo, el actor responsable (rider o conductor) y el timestamp exacto. Esto nos permite reconstruir la línea de tiempo completa de cualquier viaje y detectar anomalías como viajes que nunca salen de `solicitado` o cancelaciones repetidas de un mismo rider.
+
+## ÍNDICES
+
+Adicional a los índices que crea MySQL para las claves primarias y únicas, hemos optado por implementar índices adicionales en las columnas que pueden ser mas usadas en consultas para filtrar, joins y ordenar. 
+
+- `idx_viaje_estado`: para filtrar viajes por estado, que es la operación más frecuente en la operativa del sistema.
+- `idx_viaje_rider`: para consultar el historial de viajes de un rider concreto.
+- `idx_viaje_conductor_aceptado`: para buscar los viajes de un condcutor.
+- `idx_viaje_creado_en`: para filtrar y ordenar por fecha.
+- `idx_valoracion_conductor`: para calcular la valoración media de un conductor sin calcular sobre toda la tabla. 
+- `idx_valoracion_rider`: para consultar el historial de valoraciones de un rider.
+- `idx_evento_viaje`: para recuperar todos los eventos de un viaje específico.
+
+## Triggers
+
+Hemos implementado dos triggers en el sistema:
+trg
