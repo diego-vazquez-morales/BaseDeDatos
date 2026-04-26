@@ -73,7 +73,7 @@ JOIN usuario u ON u.id_usuario = r.id_usuario
 WHERE r.id_rider = @id_rider_demo;
 
 /*+-----------------------------------------------------------------------------------------------------+*/
--- 3) CREAR VIAJE + OFERTA Y DISTRIBUIR A CONDUCTORES ACTIVOS
+-- CREAR VIAJE + OFERTA Y DISTRIBUIR A CONDUCTORES ACTIVOS
 -- Flujo: viaje solicitado -> oferta pendiente -> reparto a conductores activos.
 -- Se guardan ids intermedios en variables para evitar hardcodear ids.
 /*+-----------------------------------------------------------------------------------------------------+*/
@@ -196,11 +196,12 @@ SET @id_conductor_2 := (
 );
 
 -- Descomenta este UPDATE para probar el trigger (debe fallar)
+START TRANSACTION;
 UPDATE oferta_conductor
 SET decision = 'aceptada', respondida_en = NOW()
 WHERE id_oferta = @id_oferta_demo
 AND id_conductor = @id_conductor_2;
-
+COMMIT;
 /*+-----------------------------------------------------------------------------------------------------+*/
 -- CONSULTAS
 -- Estas consultas se hacen para comprobar que todos los pasos anteriores se han realizado correctamente
