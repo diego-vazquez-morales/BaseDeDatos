@@ -87,10 +87,7 @@ docker exec -i mysql mysql -uroot -prootpass < backup_FECHA.sql
 ```bash
 docker exec -i mysql mysql -uroot -prootpass < backup_FECHA.sql
 
-docker exec mysql mysqlbinlog \
---        --start-datetime="año-mes-dia hora:minuto:segundos" \ #hora de inicio
---        --stop-datetime="año-mes-dia hora:minuto:segundos" \ #hora de fin
---        /var/lib/mysql/binlog.000001 > cambios.sql
+docker exec mysql /usr/bin/mysqlbinlog --start-datetime="año-mes-dia hora:minutos:segundos" --stop-datetime="año-mes-dia hora:minutos:segundos" //var/lib/mysql/binlog.000001 > cambios.sql
 
 docker exec -i mysql mysql -uroot -prootpass < cambios.sql
 ```
