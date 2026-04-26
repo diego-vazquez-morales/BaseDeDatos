@@ -1,4 +1,4 @@
--- Active: 1777046817970@@127.0.0.1@3306@rideHailing
+-- Active: 1777132168327@@127.0.0.1@3306@rideHailing
 
 
 
@@ -45,8 +45,9 @@ CREATE TABLE rideHailing.rider (
     creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     PRIMARY KEY (id_rider),
+    UNIQUE KEY uk_id_usuario (id_usuario),  -- Para que solo pueda existir un rider asociado a ese id
     FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario)
-        ON UPDATE CASCADE ON DELETE RESTRICT
+        ON DELETE CASCADE -- al borrar el usuario, se borra automaticamente el rider vinculado
 ) ENGINE=InnoDB;
 
 -- Conductor
@@ -59,11 +60,12 @@ CREATE TABLE rideHailing.conductor (
     creado_en  TIMESTAMP   NOT NULL DEFAULT     CURRENT_TIMESTAMP,
 
     PRIMARY KEY (id_conductor),
+    UNIQUE KEY uk_id_usuario (id_usuario), -- Para que solo pueda existir un conductor asociado a ese id
     UNIQUE KEY uk_licencia (licencia),
     FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario)
         ON UPDATE CASCADE ON DELETE RESTRICT,
     FOREIGN KEY (id_company) REFERENCES company(id_company)
-        ON UPDATE CASCADE ON DELETE RESTRICT
+        ON DELETE CASCADE  -- cuando borramos el usuario, se borra automaticamente el conductor. 
 ) ENGINE=InnoDB;
 
 -- Vehiculo
